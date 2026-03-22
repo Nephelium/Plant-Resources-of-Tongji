@@ -50,7 +50,11 @@ const loadLegacyPoints = async (): Promise<FeatureCollection> => {
     return legacyPointsCache;
   }
   const text = await fetch(`${ASSET_BASE}legacy/data/ligneous_plants.geojson.js`).then((r) => r.text());
-  const jsonText = text.replace(/^\s*var\s+\w+\s*=\s*/i, "").trim();
+  const jsonText = text
+    .replace(/^\uFEFF/, "")
+    .replace(/^\s*var\s+\w+\s*=\s*/i, "")
+    .replace(/;\s*$/, "")
+    .trim();
   const parsed = JSON.parse(jsonText) as FeatureCollection;
   legacyPointsCache = parsed;
   return parsed;
