@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import { api } from "../api";
-import { ASSET_BASE } from "../env";
+import { ASSET_BASE, STATIC_MODE } from "../env";
 import type { BbsPost, BbsSettings } from "../types";
 
 const posts = ref<BbsPost[]>([]);
@@ -22,6 +22,7 @@ const settings = ref<BbsSettings>({
 });
 const submitNotice = ref("");
 const faceBase = `${ASSET_BASE}legacy/bbs/face/`;
+const staticNotice = "当前为静态展示站，留言发布与回复功能已关闭。";
 
 const pagedPosts = computed(() => {
   const size = settings.value.pageSize || 5;
@@ -46,6 +47,10 @@ const loadPosts = async () => {
 };
 
 const submitPost = async () => {
+  if (STATIC_MODE) {
+    submitNotice.value = staticNotice;
+    return;
+  }
   await api.createPost(postForm);
   postForm.author = "";
   postForm.email = "";
@@ -58,6 +63,10 @@ const submitPost = async () => {
 };
 
 const submitReply = async (postId: number) => {
+  if (STATIC_MODE) {
+    submitNotice.value = staticNotice;
+    return;
+  }
   const payload = replyForm[postId];
   if (!payload) {
     return;
@@ -84,6 +93,7 @@ onMounted(loadPosts);
       <RouterLink to="/admin">进入管理</RouterLink>
     </div>
     <p v-if="submitNotice" class="notice">{{ submitNotice }}</p>
+    <p v-if="STATIC_MODE" class="notice">{{ staticNotice }}</p>
     <div class="editor">
       <input v-model="postForm.author" placeholder="昵称*" />
       <input v-model="postForm.email" placeholder="邮箱*" />
@@ -96,7 +106,7 @@ onMounted(loadPosts);
       <p class="avatar-note">头像素材（约八年前创站时期）已获得 @INBing 老师授权啦，这里只用于本网站留言互动~</p>
       <input v-model="postForm.title" placeholder="留言标题*" />
       <textarea v-model="postForm.content" rows="5" placeholder="留言内容*"></textarea>
-      <button @click="submitPost">发布留言</button>
+      <button :disabled="STATIC_MODE" @click="submitPost">发布留言</button>
     </div>
 
     <div v-if="loading">加载中...</div>
@@ -123,7 +133,7 @@ onMounted(loadPosts);
       <div class="reply-editor">
         <input v-model="getReply(post.id).author" placeholder="回复人" />
         <input v-model="getReply(post.id).content" placeholder="回复内容" />
-        <button @click="submitReply(post.id)">回复</button>
+        <button :disabled="STATIC_MODE" @click="submitReply(post.id)">回复</button>
       </div>
     </article>
     <div class="pager">
