@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import { api } from "../api";
+import { ASSET_BASE } from "../env";
 import type { BbsPost, BbsSettings } from "../types";
 
 const posts = ref<BbsPost[]>([]);
@@ -20,6 +21,7 @@ const settings = ref<BbsSettings>({
   sanitizeHtml: true,
 });
 const submitNotice = ref("");
+const faceBase = `${ASSET_BASE}legacy/bbs/face/`;
 
 const pagedPosts = computed(() => {
   const size = settings.value.pageSize || 5;
@@ -88,7 +90,7 @@ onMounted(loadPosts);
       <div class="faces">
         <label v-for="face in [1, 2, 3, 4, 5, 6, 7]" :key="face">
           <input v-model="postForm.face" type="radio" :value="face" />
-          <img :src="`/legacy/bbs/face/face${face}.gif`" :alt="`face-${face}`" />
+          <img :src="`${faceBase}face${face}.gif`" :alt="`face-${face}`" />
         </label>
       </div>
       <p class="avatar-note">头像素材（约八年前创站时期）已获得 @INBing 老师授权啦，这里只用于本网站留言互动~</p>
@@ -101,7 +103,7 @@ onMounted(loadPosts);
     <article v-for="post in pagedPosts" :key="post.id" class="post-card">
       <div class="post-layout">
         <div class="avatar">
-          <img :src="`/legacy/bbs/face/face${post.face ?? 1}.gif`" :alt="post.author" />
+          <img :src="`${faceBase}face${post.face ?? 1}.gif`" :alt="post.author" />
           <div>{{ post.author }}</div>
         </div>
         <div class="body">

@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { api } from "./api";
+import { ASSET_BASE } from "./env";
 import type { SiteProfile } from "./types";
 
 const totalVisits = ref<number | null>(null);
+const brandImage = `${ASSET_BASE}legacy/images/PRT-.png`;
 const profile = ref<SiteProfile>({
   title: "素不莳花",
   slogan: "为每一个喜爱植物的你",
@@ -25,7 +27,7 @@ onMounted(async () => {
   <div class="site-shell">
     <header class="site-header">
       <div class="brand-row">
-        <img class="brand-logo" src="/legacy/images/PRT-.png" alt="素不莳花" />
+        <img class="brand-logo" :src="brandImage" alt="素不莳花" />
         <div class="brand-subtitle">{{ profile.slogan }}</div>
       </div>
       <nav class="site-nav">
@@ -47,7 +49,7 @@ onMounted(async () => {
     </main>
 
     <footer class="site-footer">
-      <img src="/legacy/images/PRT-.png" alt="素不莳花" />
+      <img :src="brandImage" alt="素不莳花" />
       <div v-if="totalVisits !== null">欢迎您！本网站的第 {{ totalVisits }} 位访客</div>
       <div>© {{ profile.org }}</div>
       <div>地址：{{ profile.address }}</div>

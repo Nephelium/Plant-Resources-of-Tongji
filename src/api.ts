@@ -13,7 +13,7 @@ import type {
   TaxonNode,
   TimelineItem,
 } from "./types";
-import { STATIC_MODE } from "./env";
+import { ASSET_BASE, STATIC_MODE } from "./env";
 
 const RAW_API_BASE = (import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_BASE ?? "http://localhost:3000/api").trim();
 const API_BASE = RAW_API_BASE.endsWith("/") ? RAW_API_BASE.slice(0, -1) : RAW_API_BASE;
@@ -49,7 +49,7 @@ const loadLegacyPoints = async (): Promise<FeatureCollection> => {
   if (legacyPointsCache) {
     return legacyPointsCache;
   }
-  const text = await fetch("/legacy/data/ligneous_plants.geojson.js").then((r) => r.text());
+  const text = await fetch(`${ASSET_BASE}legacy/data/ligneous_plants.geojson.js`).then((r) => r.text());
   const jsonText = text.replace(/^\s*var\s+\w+\s*=\s*/i, "").trim();
   const parsed = JSON.parse(jsonText) as FeatureCollection;
   legacyPointsCache = parsed;
@@ -107,7 +107,7 @@ const buildPlantsFromPoints = (points: FeatureCollection): PlantInfo[] => {
         flower_period: first.properties.flower_period,
         fruit_period: first.properties.fruit_period,
         color: first.properties.color,
-        imageUrl: `/legacy/images/plants/${encodeURIComponent(chinese_name)}.jpg`,
+        imageUrl: `${ASSET_BASE}legacy/images/plants/${encodeURIComponent(chinese_name)}.jpg`,
         points: list,
       } as PlantInfo;
     })
@@ -119,10 +119,20 @@ const writeStaticVisits = (count: number) => localStorage.setItem("tongjiplants_
 
 const getStaticArticles = async (): Promise<ArticleSummary[]> => {
   try {
-    return await fetch("/articles/index.json").then((r) => r.json());
+    return await fetch(`${ASSET_BASE}articles/index.json`).then((r) => r.json());
   } catch {
     return [];
   }
+};
+
+const toStaticUrl = (rawPath: string) => {
+  if (/^https?:\/\//i.test(rawPath)) {
+    return rawPath;
+  }
+  if (rawPath.startsWith("/")) {
+    return `${ASSET_BASE}${rawPath.slice(1)}`;
+  }
+  return `${ASSET_BASE}${rawPath}`;
 };
 
 export const api = {
@@ -136,14 +146,14 @@ export const api = {
     if (STATIC_MODE) {
       const articles = await getStaticArticles();
       const hit = articles.find((item) => item.slug === slug);
-      const markdownPath = hit?.markdownPath || `/articles/${encodeURIComponent(slug)}/index.md`;
+      const markdownPath = toStaticUrl(hit?.markdownPath || `articles/${encodeURIComponent(slug)}/index.md`);
       const markdown = await fetch(markdownPath).then((r) => r.text());
       return {
         slug,
         title: hit?.title ?? slug,
         markdown,
         markdownPath,
-        basePath: `/articles/${encodeURIComponent(slug)}/`,
+        basePath: toStaticUrl(`articles/${encodeURIComponent(slug)}/`),
         coverImage: hit?.coverImage ?? "",
       } satisfies ArticleDetail;
     }
