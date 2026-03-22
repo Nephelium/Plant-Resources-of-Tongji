@@ -52,6 +52,7 @@ onMounted(async () => {
       <div>© {{ profile.org }}</div>
       <div>地址：{{ profile.address }}</div>
       <div>E-mail:{{ profile.email }}</div>
+      <div>植物分类、植物调绘：井立文　　网站制作：蔡昕芷、王健</div>
     </footer>
   </div>
 </template>
