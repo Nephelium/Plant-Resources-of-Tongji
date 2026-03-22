@@ -41,7 +41,17 @@ const staticProfile: SiteProfile = {
   beianUrl: "https://beian.miit.gov.cn/",
 };
 
-const staticTimeline: TimelineItem[] = [];
+const staticTimeline: TimelineItem[] = [
+  { time: "2018.05.19", content: "桥梁馆，引入：玉山枫（疑似，尚未定种）。" },
+  { time: "2018", content: "梧桐（消失）。" },
+  { time: "2018", content: "瑞安楼，锦绣苋→四季海棠。" },
+  { time: "2018", content: "东门，朱唇→四季海棠。" },
+  { time: "2017", content: "东门，紫罗兰→朱唇。" },
+  { time: "2017", content: "东门，香彩雀→紫罗兰。" },
+  { time: "2017", content: "东南区，引入：变叶木、碧冬茄、天竺葵。" },
+  { time: "2017.05.01", content: "人工湿地，引入：直立冬青、花叶杞柳、美女樱、毛地黄、天人菊。" },
+  { time: "2017.05.01", content: "南门，引入：金叶金钱蒲、蓝羊茅、中华蚊母树、玉簪、水果蓝。" },
+];
 
 let legacyPointsCache: FeatureCollection | null = null;
 
