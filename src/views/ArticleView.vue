@@ -284,4 +284,55 @@ onMounted(async () => {
 .markdown-body :deep(*) {
   max-width: 100%;
 }
+
+@media (max-width: 980px) {
+  .article-layout {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .article-list {
+    max-height: 280px;
+    overflow-y: auto;
+  }
+
+  .article-content {
+    padding: 14px;
+  }
+
+  .reader-toolbar {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .reader-toolbar {
+    gap: 6px;
+  }
+
+  .tool-btn {
+    min-width: 52px;
+    height: 30px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+
+  .markdown-body :deep(h1) {
+    font-size: 28px !important;
+  }
+
+  .markdown-body :deep(h2) {
+    font-size: 24px !important;
+  }
+
+  .markdown-body :deep(h3) {
+    font-size: 20px !important;
+  }
+
+  .markdown-body :deep(td),
+  .markdown-body :deep(th) {
+    padding: 4px 6px;
+    font-size: 16px !important;
+  }
+}
 </style>

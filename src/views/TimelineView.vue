@@ -84,4 +84,36 @@ td {
   text-align: center;
   color: #285d53;
 }
+
+@media (max-width: 900px) {
+  .timeline-panel {
+    padding: 14px;
+  }
+
+  .timeline-head {
+    margin-bottom: 8px;
+  }
+
+  table {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .timeline-head {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  th,
+  td {
+    padding: 8px 6px;
+    font-size: 14px;
+  }
+
+  .upload-btn {
+    padding: 7px 12px;
+    font-size: 13px;
+  }
+}
 </style>

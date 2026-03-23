@@ -306,4 +306,56 @@ watch(viewLevel, (level) => {
   border-radius: 14px;
   overflow: hidden;
 }
+
+@media (max-width: 980px) {
+  .taxon-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
+  }
+
+  .tree-panel,
+  .detail-panel {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .plant-image,
+  .plant-map {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .tree-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .tree-toolbar select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .genus-summary {
+    margin-left: 10px;
+  }
+
+  .species-btn {
+    width: calc(100% - 36px);
+    margin-left: 24px;
+    padding: 8px 14px;
+  }
+
+  .detail-panel {
+    padding: 14px;
+  }
+
+  .plant-map {
+    height: 260px;
+  }
+}
 </style>
