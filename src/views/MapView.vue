@@ -164,9 +164,9 @@ watch(filtered, () => {
   }
 
   .map-toolbar div {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
-    line-height: 1.4;
+    line-height: 1.35;
   }
 
   .map-container {

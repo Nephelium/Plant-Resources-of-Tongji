@@ -4,7 +4,6 @@ import { api } from "./api";
 import { ASSET_BASE } from "./env";
 import type { SiteProfile } from "./types";
 
-const totalVisits = ref<number | null>(null);
 const brandImage = `${ASSET_BASE}legacy/images/PRT-.png`;
 const profile = ref<SiteProfile>({
   title: "素不莳花",
@@ -17,8 +16,7 @@ const profile = ref<SiteProfile>({
 });
 
 onMounted(async () => {
-  const [visit, siteProfile] = await Promise.all([api.addVisit(), api.getSiteProfile()]);
-  totalVisits.value = visit.totalVisits;
+  const [, siteProfile] = await Promise.all([api.addVisit(), api.getSiteProfile()]);
   profile.value = siteProfile;
 });
 </script>
@@ -50,11 +48,11 @@ onMounted(async () => {
 
     <footer class="site-footer">
       <img :src="brandImage" alt="素不莳花" />
-      <div v-if="totalVisits !== null">欢迎您！本网站的第 {{ totalVisits }} 位访客</div>
       <div>© {{ profile.org }}</div>
       <div>地址：{{ profile.address }}</div>
       <div>E-mail:{{ profile.email }}</div>
-      <div>植物分类、植物调绘：井立文　　网站制作：蔡昕芷、王健</div>
+      <div>植物分类及调绘：井立文</div>
+      <div>植物坐标定位及网站制作：蔡昕芷、王健</div>
     </footer>
   </div>
 </template>

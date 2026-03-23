@@ -22,7 +22,8 @@ const settings = ref<BbsSettings>({
 });
 const submitNotice = ref("");
 const faceBase = `${ASSET_BASE}legacy/bbs/face/`;
-const staticNotice = "当前为静态展示站，留言发布与回复功能已关闭。";
+const staticNotice = "当前为静态展示站，留言发布与回复功能已关闭，请联系公众号或邮箱。";
+const qrcodeImage = `${ASSET_BASE}legacy/images/qrcode.jpg`;
 
 const pagedPosts = computed(() => {
   const size = settings.value.pageSize || 5;
@@ -92,6 +93,14 @@ onMounted(loadPosts);
       <h2>留言板</h2>
       <RouterLink to="/admin">进入管理</RouterLink>
     </div>
+    <section v-if="STATIC_MODE" class="static-card">
+      <img :src="qrcodeImage" alt="公众号二维码" />
+      <div>
+        <strong>静态网站提示</strong>
+        <p>{{ staticNotice }}</p>
+        <p>公众号二维码见左侧图片，邮箱：tongjiplants@163.com</p>
+      </div>
+    </section>
     <p v-if="submitNotice" class="notice">{{ submitNotice }}</p>
     <p v-if="STATIC_MODE" class="notice">{{ staticNotice }}</p>
     <div class="editor">
@@ -152,6 +161,27 @@ onMounted(loadPosts);
 .notice {
   color: #2f7e73;
   font-weight: 700;
+}
+
+.static-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  margin: 8px 0 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(117, 188, 173, 0.45);
+}
+
+.static-card img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.static-card p {
+  margin: 4px 0 0;
 }
 
 .bbs-head {
@@ -275,5 +305,29 @@ button {
   align-items: center;
   gap: 8px;
   margin-top: 12px;
+}
+
+@media (max-width: 640px) {
+  .bbs-panel {
+    padding: 14px;
+  }
+
+  .bbs-head {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .static-card {
+    flex-direction: column;
+  }
+
+  .static-card img {
+    width: 92px;
+    height: 92px;
+  }
+
+  .post-layout {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

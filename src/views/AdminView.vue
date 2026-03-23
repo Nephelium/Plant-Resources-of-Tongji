@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { api } from "../api";
+import { ASSET_BASE, STATIC_MODE } from "../env";
 import type { AdminSummary, BbsPost, BbsSettings, SiteProfile } from "../types";
 
 const ADMIN_TOKEN_KEY = "tongjiplants_admin_token";
@@ -16,6 +17,8 @@ const authError = ref("");
 const postFilter = ref<"all" | "pending" | "approved" | "rejected">("all");
 const wechatUrl = ref("");
 const importing = ref(false);
+const qrcodeImage = `${ASSET_BASE}legacy/images/qrcode.jpg`;
+const staticNotice = "当前为静态展示站，后台管理功能不可用，请联系公众号或邮箱。";
 const bbsSettings = ref<BbsSettings>({
   pageSize: 5,
   requireAudit: true,
@@ -154,7 +157,16 @@ onMounted(async () => {
   <section class="section-panel admin-panel">
     <h2>留言板后台管理</h2>
 
-    <div v-if="!isAuthed" class="login-card">
+    <section v-if="STATIC_MODE" class="static-card">
+      <img :src="qrcodeImage" alt="公众号二维码" />
+      <div>
+        <h3>静态网站提示</h3>
+        <p>{{ staticNotice }}</p>
+        <p>邮箱：tongjiplants@163.com</p>
+      </div>
+    </section>
+
+    <div v-else-if="!isAuthed" class="login-card">
       <h3>管理员登录</h3>
       <input v-model="authForm.username" placeholder="管理员账号" />
       <input v-model="authForm.password" type="password" placeholder="管理员密码" @keyup.enter="login" />
@@ -245,6 +257,31 @@ onMounted(async () => {
 <style scoped>
 .admin-panel {
   padding: 24px;
+}
+
+.static-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(117, 188, 173, 0.45);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.static-card img {
+  width: 110px;
+  height: 110px;
+  border-radius: 10px;
+}
+
+.static-card h3 {
+  margin: 0 0 6px;
+  font-size: 22px;
+}
+
+.static-card p {
+  margin: 4px 0;
 }
 
 .login-card {
@@ -407,5 +444,34 @@ button {
 
 .danger {
   background: #d86d6d;
+}
+
+@media (max-width: 640px) {
+  .admin-panel {
+    padding: 14px;
+  }
+
+  .static-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .static-card img {
+    width: 92px;
+    height: 92px;
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+  }
+
+  .profile-grid,
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .import-row {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

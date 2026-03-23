@@ -72,9 +72,11 @@ const showPlantMap = async (name: string) => {
     </div>
     <div v-if="loading">正在查询...</div>
     <div v-for="item in results" :key="item.chinese_name" class="result-item">
-      <span>{{ item.scientific_name }}&nbsp;&nbsp;&nbsp;&nbsp;{{ item.chinese_name }}</span>
-      <button class="mini-btn" @click="showPlantMap(item.chinese_name)">查看点位</button>
-      <RouterLink :to="`/plant/${encodeURIComponent(item.chinese_name)}`" class="detail-link">详情页</RouterLink>
+      <span class="plant-name">{{ item.scientific_name }}&nbsp;&nbsp;&nbsp;&nbsp;{{ item.chinese_name }}</span>
+      <div class="result-actions">
+        <button class="mini-btn" @click="showPlantMap(item.chinese_name)">查看点位</button>
+        <RouterLink :to="`/plant/${encodeURIComponent(item.chinese_name)}`" class="detail-link">详情页</RouterLink>
+      </div>
     </div>
 
     <section v-if="selectedPlant?.points?.length" class="search-map-wrap">
@@ -133,6 +135,16 @@ button {
   font-size: 13px;
 }
 
+.result-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.plant-name {
+  flex: 1;
+}
+
 .detail-link {
   color: #2d746a;
   font-weight: 700;
@@ -178,6 +190,17 @@ button {
     flex-wrap: wrap;
     justify-content: flex-start;
     text-align: left;
+    gap: 6px;
+  }
+
+  .plant-name {
+    flex-basis: 100%;
+  }
+
+  .result-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
   }
 }
 </style>

@@ -8,6 +8,7 @@ const tree = ref<TaxonNode[]>([]);
 const current = ref<PlantInfo | null>(null);
 const imageUrl = ref("");
 const mapEl = ref<HTMLElement | null>(null);
+const detailPanelEl = ref<HTMLElement | null>(null);
 const detailMap = ref<L.Map | null>(null);
 const pointLayer = ref<L.Layer | null>(null);
 const viewLevel = ref<"family" | "genus" | "species">("species");
@@ -61,6 +62,23 @@ const toggleGenus = (familyName: string, genusName: string) => {
   expandedGenera.value = next;
 };
 
+const resetExpandedState = () => {
+  if (viewLevel.value === "species") {
+    expandedFamilies.value = new Set(tree.value.map((item) => item.familyName));
+    expandedGenera.value = new Set(
+      tree.value.flatMap((family) => family.genera.map((genus) => genusKey(family.familyName, genus.genusName)))
+    );
+    return;
+  }
+  if (viewLevel.value === "genus") {
+    expandedFamilies.value = new Set(tree.value.map((item) => item.familyName));
+    expandedGenera.value = new Set();
+    return;
+  }
+  expandedFamilies.value = new Set();
+  expandedGenera.value = new Set();
+};
+
 const renderPlantMap = async () => {
   if (!hasPlantPoints.value) {
     return;
@@ -104,32 +122,20 @@ const loadPlant = async (name: string) => {
   current.value = await api.getPlant(name);
   imageUrl.value = current.value.imageUrl || current.value.imageCandidates?.[0] || "";
   await renderPlantMap();
+  if (window.innerWidth <= 980 && detailPanelEl.value) {
+    detailPanelEl.value.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 };
 
 onMounted(async () => {
+  if (window.innerWidth <= 640) {
+    viewLevel.value = "family";
+  }
   tree.value = await api.getTaxonTree();
-  expandedFamilies.value = new Set(tree.value.map((item) => item.familyName));
-  expandedGenera.value = new Set(
-    tree.value.flatMap((family) => family.genera.map((genus) => genusKey(family.familyName, genus.genusName)))
-  );
+  resetExpandedState();
 });
 
-watch(viewLevel, (level) => {
-  if (level === "species") {
-    expandedFamilies.value = new Set(tree.value.map((item) => item.familyName));
-    expandedGenera.value = new Set(
-      tree.value.flatMap((family) => family.genera.map((genus) => genusKey(family.familyName, genus.genusName)))
-    );
-    return;
-  }
-  if (level === "genus") {
-    expandedFamilies.value = new Set(tree.value.map((item) => item.familyName));
-    expandedGenera.value = new Set();
-    return;
-  }
-  expandedFamilies.value = new Set();
-  expandedGenera.value = new Set();
-});
+watch(viewLevel, resetExpandedState);
 </script>
 
 <template>
@@ -163,7 +169,7 @@ watch(viewLevel, (level) => {
       </div>
     </aside>
 
-    <article class="section-panel detail-panel">
+    <article ref="detailPanelEl" class="section-panel detail-panel">
       <template v-if="current">
         <h2>{{ current.scientific_name }} {{ current.chinese_name }}</h2>
         <p>{{ current.category }} / {{ current.family }}</p>

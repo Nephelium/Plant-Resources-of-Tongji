@@ -240,6 +240,20 @@ h3 {
 }
 
 @media (max-width: 720px) {
+  .brand-row {
+    gap: 2px;
+    padding: 4px 8px;
+  }
+
+  .brand-logo {
+    width: 220px;
+    max-width: 88%;
+  }
+
+  .brand-subtitle {
+    font-size: 12px;
+  }
+
   .site-nav {
     display: flex;
     overflow-x: auto;
@@ -255,13 +269,33 @@ h3 {
   .site-nav a {
     flex: 0 0 auto;
     min-width: 78px;
-    padding: 8px 6px;
-    font-size: 12px;
+    padding: 6px 6px;
+    font-size: 11px;
     letter-spacing: 0.04em;
     border-right: 1px solid rgba(255, 255, 255, 0.16);
   }
 
   .section-panel {
     border-radius: 14px;
+  }
+}
+
+@media (max-width: 640px) {
+  .brand-row {
+    padding: 3px 8px;
+  }
+
+  .brand-logo {
+    width: 190px;
+  }
+
+  .brand-subtitle {
+    font-size: 11px;
+  }
+
+  .site-nav a {
+    min-width: 72px;
+    padding: 5px 4px;
+    font-size: 10px;
   }
 }
