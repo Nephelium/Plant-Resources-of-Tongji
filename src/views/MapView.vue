@@ -9,7 +9,7 @@ const keyword = ref("");
 const allFeatures = ref<PlantFeature[]>([]);
 const mapRef = ref<L.Map | null>(null);
 const markerLayer = ref<L.Layer | null>(null);
-const activeBaseLayer = ref("标准地图");
+const activeBaseLayer = ref("浅色地图");
 
 const filtered = computed(() => {
   const text = keyword.value.trim().toLowerCase();
@@ -83,13 +83,6 @@ onMounted(async () => {
       maxZoom: 22,
       attribution: "© OpenStreetMap © CARTO",
     }),
-    卫星影像: L.tileLayer(
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      {
-        maxZoom: 22,
-        attribution: "Tiles © Esri",
-      }
-    ),
   };
 
   baseLayers[activeBaseLayer.value].addTo(map);
