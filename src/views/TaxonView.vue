@@ -321,6 +321,14 @@ watch(viewLevel, (level) => {
     overflow: visible;
   }
 
+  .detail-panel {
+    order: 1;
+  }
+
+  .tree-panel {
+    order: 2;
+  }
+
   .plant-image,
   .plant-map {
     width: 100%;
@@ -329,6 +337,12 @@ watch(viewLevel, (level) => {
 }
 
 @media (max-width: 640px) {
+  .tree-panel {
+    max-height: 46vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
   .tree-toolbar {
     flex-direction: column;
     align-items: flex-start;
@@ -342,12 +356,20 @@ watch(viewLevel, (level) => {
 
   .genus-summary {
     margin-left: 10px;
+    font-size: 14px;
+    padding: 6px 12px;
   }
 
   .species-btn {
     width: calc(100% - 36px);
     margin-left: 24px;
     padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .family-summary {
+    padding: 8px 10px;
+    font-size: 16px;
   }
 
   .detail-panel {

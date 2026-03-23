@@ -149,4 +149,29 @@ watch(filtered, () => {
   border-radius: 12px;
   box-shadow: 0 12px 24px rgba(30, 70, 63, 0.28);
 }
+
+@media (max-width: 720px) {
+  .map-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .map-toolbar input {
+    width: 100%;
+    height: 36px;
+  }
+
+  .map-toolbar div {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .map-container {
+    height: 62vh;
+    min-height: 320px;
+  }
+}
 </style>

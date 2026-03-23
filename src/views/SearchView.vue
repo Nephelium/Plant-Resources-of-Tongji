@@ -106,6 +106,8 @@ input {
 
 button {
   width: 80px;
+  min-width: 80px;
+  white-space: nowrap;
   background-color: #76c3b3;
   color: #fff;
   cursor: pointer;
@@ -149,5 +151,33 @@ button {
   border: 1px solid rgba(132, 183, 168, 0.35);
   border-radius: 14px;
   overflow: hidden;
+}
+
+@media (max-width: 720px) {
+  .search-panel {
+    padding: 14px 12px 10px;
+  }
+
+  .search-box {
+    gap: 8px;
+    margin: 12px 0;
+  }
+
+  input {
+    width: calc(100% - 84px);
+    height: 36px;
+  }
+
+  button {
+    width: 72px;
+    min-width: 72px;
+    font-size: 14px;
+  }
+
+  .result-item {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    text-align: left;
+  }
 }
 </style>
