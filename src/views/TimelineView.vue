@@ -111,14 +111,14 @@ onMounted(load);
 }
 .timeline-aside {
   position: sticky;
-  top: 120px;
+  top: var(--sticky-top);
   align-self: start;
   padding: 32px;
-  background: #e7eee8;
+  background: var(--soft);
   border-radius: 8px;
 }
 .timeline-aside > svg {
-  color: #8c6aa1;
+  color: var(--primary);
   margin-bottom: 22px;
 }
 .timeline-aside h2 {
@@ -137,13 +137,13 @@ onMounted(load);
 }
 .year-filter button {
   background: transparent;
-  border-color: #d3bfdf;
+  border-color: var(--line);
   justify-content: space-between;
   font-size: 12px;
 }
 .year-filter .selected {
   background: var(--primary);
-  color: white;
+  color: var(--on-primary);
   border-color: var(--primary);
 }
 .timeline-aside small {
@@ -172,7 +172,7 @@ onMounted(load);
   list-style: none;
   padding: 0 0 0 28px;
   margin: 0 0 0 8px;
-  border-left: 2px solid #d7ccdf;
+  border-left: 2px solid var(--line);
 }
 .year-group li {
   position: relative;
@@ -182,7 +182,7 @@ onMounted(load);
   position: absolute;
   width: 9px;
   height: 9px;
-  border: 2px solid #b87596;
+  border: 2px solid var(--pink-accent);
   background: var(--paper);
   border-radius: 50%;
   left: -33px;

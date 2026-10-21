@@ -3,6 +3,7 @@ import { onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { api } from "./api";
 import AppIcon from "./components/AppIcon.vue";
+import ThemeControl from "./components/ThemeControl.vue";
 import type { SiteProfile } from "./types";
 const route = useRoute();
 const menuOpen = ref(false);
@@ -83,6 +84,7 @@ onMounted(async () => {
         <RouterLink to="/search" class="header-search" aria-label="查找植物"
           ><AppIcon name="search" /><span>发现草木</span></RouterLink
         >
+        <ThemeControl />
         <button
           ref="menuButton"
           class="menu-toggle icon-button"

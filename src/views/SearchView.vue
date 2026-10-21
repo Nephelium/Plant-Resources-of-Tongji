@@ -244,7 +244,7 @@ onMounted(load);
 .catalog-tools {
   padding: 18px 20px;
   border-radius: 22px;
-  background: #fff;
+  background: var(--surface);
 }
 .catalog-page :deep(.page-heading) {
   margin-bottom: 26px;
@@ -292,7 +292,7 @@ onMounted(load);
   justify-content: space-between;
   align-items: center;
   margin: 26px 0 20px;
-  scroll-margin-top: 110px;
+  scroll-margin-top: 0;
 }
 .catalog-summary p {
   margin: 0;
@@ -320,8 +320,8 @@ onMounted(load);
   border-color: transparent;
 }
 .view-switch button.selected {
-  background: #e4eee6;
-  border-color: #a4c2ae;
+  background: var(--leaf-tint);
+  border-color: var(--line-strong);
 }
 .catalog-grid {
   display: grid;
@@ -330,8 +330,8 @@ onMounted(load);
 }
 .plant-card {
   background: var(--surface);
-  border: 1px solid #afc2b4;
-  box-shadow: 0 4px 0 #e0e8de;
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 4px 0 var(--card-shadow);
   border-radius: 21px;
   overflow: hidden;
   min-width: 0;
@@ -341,8 +341,8 @@ onMounted(load);
     border-color 0.2s;
 }
 .plant-card:hover {
-  border-color: #a9b99b;
-  box-shadow: 0 9px 0 #d6e3d8;
+  border-color: var(--line-strong);
+  box-shadow: 0 9px 0 var(--card-shadow);
   translate: 0 -5px;
 }
 .plant-card-image {
@@ -437,7 +437,7 @@ onMounted(load);
 }
 .pagination .selected {
   background: var(--primary);
-  color: white;
+  color: var(--on-primary);
   border-color: var(--primary);
 }
 @media (max-width: 1050px) {

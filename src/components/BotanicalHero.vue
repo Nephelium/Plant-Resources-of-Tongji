@@ -258,17 +258,17 @@ h1 em::after {
 }
 .hero-secondary {
   background: var(--leaf-tint);
-  border: 1.5px solid #8daf97;
-  box-shadow: 0 4px 0 #bdd5c4;
+  border: 1.5px solid var(--line-strong);
+  box-shadow: 0 4px 0 var(--card-shadow);
 }
 .hero-secondary:hover {
-  background: #dcecdf;
+  background: var(--leaf-tint);
   transform: translateY(-3px);
-  box-shadow: 0 7px 0 #bdd5c4;
+  box-shadow: 0 7px 0 var(--card-shadow);
 }
 .hero-secondary:active {
   transform: translateY(3px);
-  box-shadow: 0 1px 0 #bdd5c4;
+  box-shadow: 0 1px 0 var(--card-shadow);
 }
 .hero-location {
   display: flex;
@@ -292,9 +292,9 @@ h1 em::after {
   inset: 45px -10px 48px 28px;
   background: radial-gradient(
     ellipse at 65% 50%,
-    #e1eee4 0%,
-    #eaf2eb 60%,
-    #f1f5f0 100%
+    var(--leaf-tint) 0%,
+    var(--leaf-tint) 60%,
+    var(--soft) 100%
   );
   border-radius: 42% 58% 48% 52% / 55% 38% 62% 45%;
   transform: rotate(-11deg);
@@ -303,7 +303,7 @@ h1 em::after {
 .scene-orbit {
   position: absolute;
   inset: 20px 20px 50px 30px;
-  border: 1px dashed #9cb8a7;
+  border: 1px dashed var(--line-strong);
   border-radius: 50%;
   transform: rotate(30deg);
   z-index: -1;
@@ -325,14 +325,14 @@ h1 em::after {
   position: absolute;
   top: 4px;
   right: 16px;
-  background: #f6dce5;
-  border: 1px solid #d5a0b3;
+  background: var(--petal);
+  border: 1px solid var(--pink-line);
   border-radius: 16px 20px 15px 20px;
   padding: 12px 18px;
-  color: #744c63;
+  color: var(--pink-ink);
   font-size: 12px;
   transform: rotate(8deg);
-  box-shadow: 0 5px 0 #e7c2d0;
+  box-shadow: 0 5px 0 var(--pink-shadow);
   animation: note-float 8s ease-in-out -2s infinite;
 }
 .floating-note strong {
@@ -343,7 +343,7 @@ h1 em::after {
   left: -22px;
   bottom: -25px;
   font-size: 34px;
-  color: #a07188;
+  color: var(--pink-ink);
   transform: rotate(-12deg);
 }
 .specimen-widget {
@@ -368,23 +368,23 @@ h1 em::after {
   min-width: 0;
   overflow-wrap: anywhere;
   line-height: 1.4;
-  border: 1px solid #a3b8a8;
+  border: 1px solid var(--line);
   border-bottom: 0;
   min-height: 34px;
   padding: 5px 10px;
   border-radius: 12px 12px 0 0;
   font-size: 12px;
   font-weight: 600;
-  background: #edf3ed;
-  color: #56715f;
+  background: var(--soft);
+  color: var(--primary);
 }
 .specimen-tabs button.selected {
-  background: #d3ead8;
-  color: #264c36;
+  background: var(--leaf-tint);
+  color: var(--primary);
 }
 .specimen-tabs button:nth-child(3).selected {
-  background: #f2dce5;
-  color: #6a3f55;
+  background: var(--petal);
+  color: var(--pink-ink);
 }
 .specimen-card {
   display: grid;
@@ -392,11 +392,11 @@ h1 em::after {
   align-items: center;
   gap: 14px;
   padding: 13px;
-  background: #fffefa;
-  border: 1.5px solid #799781;
+  background: var(--surface);
+  border: 1.5px solid var(--line-strong);
   border-radius: 17px;
   box-shadow:
-    0 6px 0 #c2d4c8,
+    0 6px 0 var(--card-shadow),
     0 10px 20px #254b3212;
   min-height: 112px;
 }
@@ -433,7 +433,7 @@ h1 em::after {
   right: 4px;
   bottom: 0;
   border-radius: 50%;
-  background: #ffffffc9;
+  background: var(--surface);
   min-height: 34px;
   width: 34px;
   padding: 0;

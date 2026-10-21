@@ -122,7 +122,7 @@ defineProps<{ plant: PlantInfo; compact?: boolean }>();
   border: 1px solid var(--line);
   border-radius: 21px;
   align-self: start;
-  background: #ffffff;
+  background: var(--surface);
 }
 dl {
   margin: 18px 0;
@@ -146,7 +146,7 @@ dd {
   display: flex;
   align-items: center;
   gap: 15px;
-  color: #538362;
+  color: var(--muted);
   margin-top: 25px;
 }
 .profile-note p {

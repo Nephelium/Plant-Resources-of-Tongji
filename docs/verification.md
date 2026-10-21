@@ -91,7 +91,28 @@ npx --yes --package @playwright/cli playwright-cli -s=tongji-boundaries run-code
 
 ## 截图
 
-[`output/playwright/screenshots`](../output/playwright/screenshots/) 包含主要页面、照片图库、大图查看器和随机相识卡片共 12 张桌面截图，5 张手机尺寸截图，以及 1 张完整文章目录长图。README 中的 17 张内嵌截图与 1 个长图链接均已检查存在。
+[`output/playwright/screenshots`](../output/playwright/screenshots/) 包含主要页面、照片图库、大图查看器、随机相识卡片和夜间外观共 16 张桌面截图，6 张手机尺寸截图，以及 1 张完整文章目录长图。README 内嵌图片与长图链接均已检查存在。
+
+## 贴顶导航与夜间模式复核
+
+[`scripts/verify-theme.cjs`](../scripts/verify-theme.cjs) 在静态子目录生产预览中完成 56 项检查，未捕获页面异常为 0。使用石墨灰背景与灰色卡片，照片、封面和插画保持原色。
+
+- 320、390、600、768、900、1000、1024、1440、1920 px 下，顶栏始终贴住上沿并占满窗口，滚动后无间隙，无横向溢出。
+- 默认跟随系统，系统外观变化时即时更新。手动浅色或深色覆盖系统，刷新后保留设置，可恢复跟随系统。
+- 外观面板支持键盘进入、Tab 离开、Esc 关闭及焦点返回，点击外部收起。手机菜单位于顶栏下方。
+- 图鉴、分类、植物档案、变迁、文章、联系、静态管理提示和缺失页面均应用深色外观，未对照片使用反色滤镜。
+- 分类侧栏与文章设置位于顶栏下方，章节跳转可见，阅读进度贴合顶栏下沿。移除了重复叠加的滚动避让间距。
+- 检查长篇原文的彩色强调，在深色纸面上达到至少 4.5:1 的对比度，保留原有色彩区别。
+- 禁止 localStorage 时仍能跟随系统并手动切换。额外阻断应用 JS，确认应用挂载前已设置深色外观，背景为石墨灰。
+
+本次改动后，主流程 71 项、边界 16 项及图库 26 项回归均通过，静态、动态与静态子目录构建通过。主流程与图库浏览器会话使用当前系统已有的代理访问真实 OpenStreetMap 图块，没有修改系统网络设置。动态留言继续使用本地模拟 API。
+
+运行专项检查前，先打开生产预览地址。脚本使用当前页的站点前缀，适用于根目录、子目录和线上站点。禁止存储场景应在生产构建中检查，避免开发服务热更新客户端自身对存储的依赖影响结果。
+
+```powershell
+npx --yes --package @playwright/cli playwright-cli -s=tongji-theme open http://127.0.0.1:4175/Plant-Resources-of-Tongji/
+npx --yes --package @playwright/cli playwright-cli -s=tongji-theme run-code --filename=scripts/verify-theme.cjs
+```
 
 ## 验证范围
 

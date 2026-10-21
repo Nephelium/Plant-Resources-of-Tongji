@@ -359,10 +359,10 @@ onMounted(loadPosts);
 .contact-copy {
   position: relative;
   padding: 30px 42px;
-  border: 1px solid #bdcebf;
+  border: 1px solid var(--line-strong);
   border-radius: 25px;
-  background: white;
-  box-shadow: 0 6px 0 #e0e8df;
+  background: var(--surface);
+  box-shadow: 0 6px 0 var(--card-shadow);
 }
 .postcard-top {
   display: flex;
@@ -380,12 +380,12 @@ onMounted(loadPosts);
   gap: 4px;
   align-items: center;
   padding: 9px 12px;
-  background: #e3f0e5;
-  outline: 1px dashed #71a981;
+  background: var(--leaf-tint);
+  outline: 1px dashed var(--line-strong);
   outline-offset: -5px;
-  border: 1px solid #b3d2bb;
+  border: 1px solid var(--line-strong);
   transform: rotate(8deg);
-  color: #357a4c;
+  color: var(--primary);
 }
 .leaf-stamp small {
   font:
@@ -400,7 +400,7 @@ onMounted(loadPosts);
   letter-spacing: -0.03em;
 }
 .contact-copy h2 span {
-  color: #398852;
+  color: var(--primary);
 }
 .contact-copy > p {
   color: var(--muted);
@@ -445,7 +445,7 @@ onMounted(loadPosts);
   gap: 8px;
   padding-top: 20px;
   margin-top: 26px;
-  border-top: 1px dashed #c9d9cc;
+  border-top: 1px dashed var(--line);
   font-size: 12px;
   color: var(--muted);
 }
@@ -454,12 +454,12 @@ onMounted(loadPosts);
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #244d39;
+  background: var(--feature-bg);
   color: white;
   border-radius: 25px;
   margin: 0;
   padding: 30px 24px;
-  box-shadow: 0 6px 0 #c8d9ce;
+  box-shadow: 0 6px 0 var(--card-shadow);
 }
 .contact-qr > .eyebrow {
   color: #c4dfcd;
@@ -469,7 +469,7 @@ onMounted(loadPosts);
 .qr-frame {
   padding: 12px;
   border-radius: 16px;
-  background: white;
+  background: var(--surface);
   transform: rotate(-3deg);
   transition: transform 0.3s;
   box-shadow: 0 6px 18px #16332640;
@@ -517,14 +517,14 @@ onMounted(loadPosts);
   padding: 22px 28px;
   border: 1px solid var(--line);
   border-radius: 20px;
-  background: white;
+  background: var(--surface);
   transition:
     translate 0.2s,
     background 0.2s;
 }
 .contact-links > a:hover {
   translate: 0 -3px;
-  background: #e8f1e9;
+  background: var(--soft);
 }
 .contact-links > a > div {
   flex: 1;
@@ -615,12 +615,12 @@ onMounted(loadPosts);
 }
 .bbs-intro {
   padding: 30px;
-  background: #e7eee8;
+  background: var(--soft);
   align-self: start;
   border-radius: 8px;
 }
 .bbs-intro > svg {
-  color: #438363;
+  color: var(--primary);
   margin-bottom: 20px;
 }
 .bbs-intro h2 {
@@ -660,7 +660,7 @@ onMounted(loadPosts);
   overflow-wrap: anywhere;
 }
 .reply-list {
-  border-left: 2px solid #b8c8a7;
+  border-left: 2px solid var(--line);
   padding: 0 0 0 18px;
   margin: 20px 0;
   font-size: 12px;

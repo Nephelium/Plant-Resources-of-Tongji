@@ -358,7 +358,7 @@ onBeforeUnmount(() => {
   height: clamp(330px, 38vw, 510px);
   overflow: hidden;
   border-radius: 21px;
-  background: #192b23;
+  background: var(--photo-frame);
 }
 .gallery-track {
   display: flex;
@@ -527,7 +527,7 @@ onBeforeUnmount(() => {
   padding: 22px;
   border: 0;
   color: white;
-  background: #10251df5;
+  background: var(--photo-overlay);
   z-index: 3000;
 }
 .photo-lightbox::backdrop {

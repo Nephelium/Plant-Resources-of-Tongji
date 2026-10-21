@@ -351,7 +351,7 @@ onBeforeUnmount(() => {
 }
 .stats-strip p {
   margin: 0;
-  color: #6c7a8b;
+  color: var(--muted);
   font-family: var(--display);
   font-size: 13px;
 }
@@ -434,7 +434,7 @@ onBeforeUnmount(() => {
 .map-species-row {
   display: flex;
   align-items: center;
-  border-bottom: 1px solid #e9ece3;
+  border-bottom: 1px solid var(--line);
 }
 .species-filter {
   display: flex;
@@ -447,7 +447,7 @@ onBeforeUnmount(() => {
   text-align: left;
 }
 .species-filter:hover {
-  background: #eaf3ec;
+  background: var(--soft);
 }
 .species-filter > i {
   width: 6px;
@@ -491,7 +491,7 @@ onBeforeUnmount(() => {
   background: transparent;
 }
 .sidebar-note {
-  color: #768397;
+  color: var(--muted);
   font-size: 10px;
   padding-top: 13px;
   line-height: 1.7;
@@ -559,9 +559,9 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  background: #dcebdd;
+  background: var(--leaf-tint);
   padding: 35px 38px;
-  border: 1px solid #dae1cf;
+  border: 1px solid var(--line);
   border-radius: 10px;
   margin-top: 38px;
 }
@@ -668,10 +668,10 @@ onBeforeUnmount(() => {
 
 .discovery-card {
   background: var(--surface);
-  border: 1px solid #afc2b4;
+  border: 1px solid var(--line-strong);
   border-radius: 20px 23px 19px 24px;
   overflow: hidden;
-  box-shadow: 0 5px 0 #dde6de;
+  box-shadow: 0 5px 0 var(--card-shadow);
   transition:
     translate 0.25s,
     rotate 0.25s,
@@ -680,7 +680,7 @@ onBeforeUnmount(() => {
 .discovery-card:hover {
   translate: 0 -7px;
   rotate: -1deg;
-  box-shadow: 0 10px 0 #d1dfd4;
+  box-shadow: 0 10px 0 var(--card-shadow);
 }
 .discovery-card:nth-child(even):hover {
   rotate: 1deg;
@@ -707,7 +707,7 @@ onBeforeUnmount(() => {
 }
 .discovery-image > span {
   background: var(--leaf-tint);
-  color: #2e5740;
+  color: var(--ink);
   width: 31px;
   height: 31px;
   border-radius: 11px;
@@ -716,19 +716,19 @@ onBeforeUnmount(() => {
   font-family: var(--display);
   font-weight: 700;
   text-shadow: none;
-  box-shadow: 0 3px 0 #adc8b5;
+  box-shadow: 0 3px 0 var(--card-shadow);
   transform: rotate(-7deg);
 }
 .discovery-card:nth-child(even) .discovery-image > span {
   background: var(--petal);
-  color: #765166;
-  box-shadow: 0 3px 0 #cfa5b6;
+  color: var(--pink-ink);
+  box-shadow: 0 3px 0 var(--pink-shadow);
 }
 .journal-banner {
-  background: #dcebdd;
-  border: 1.5px solid #96b29e;
+  background: var(--leaf-tint);
+  border: 1.5px solid var(--line-strong);
   border-radius: 26px 32px 24px 30px;
-  box-shadow: 0 6px 0 #c4d8c8;
+  box-shadow: 0 6px 0 var(--card-shadow);
   position: relative;
   transition:
     translate 0.25s,
@@ -736,7 +736,7 @@ onBeforeUnmount(() => {
 }
 .journal-banner:hover {
   translate: 0 -4px;
-  box-shadow: 0 10px 0 #c4d8c8;
+  box-shadow: 0 10px 0 var(--card-shadow);
 }
 .journal-banner .eyebrow {
   color: var(--primary);
@@ -747,40 +747,40 @@ onBeforeUnmount(() => {
 .journal-banner > span {
   padding: 13px 22px;
   background: var(--leaf-tint);
-  border: 1px solid #8caf97;
-  color: #284d38;
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
   border-radius: 15px;
-  box-shadow: 0 4px 0 #c2d9c9;
+  box-shadow: 0 4px 0 var(--card-shadow);
   gap: 15px;
 }
 .stats-strip {
-  background: #e1eddf;
-  border: 1px solid #bfd2c0;
+  background: var(--leaf-tint);
+  border: 1px solid var(--line-strong);
   border-radius: 25px 31px 24px 29px;
   padding: 24px 30px;
   margin: 5px 0 48px;
-  box-shadow: 0 4px 0 #d4e3d5;
+  box-shadow: 0 4px 0 var(--card-shadow);
 }
 .stats-strip strong {
   font-family: var(--display);
   font-weight: 800;
 }
 .stats-strip > div:nth-child(2) strong {
-  color: #44895e;
+  color: var(--primary);
 }
 .stats-strip > div:nth-child(3) strong {
-  color: #b85e7e;
+  color: var(--pink-accent);
 }
 .stats-strip > div {
-  border-color: #becfbe;
+  border-color: var(--line);
 }
 .section-heading {
   margin-top: 42px;
 }
 .map-workspace {
   border-radius: 22px;
-  border-color: #9fb7a8;
-  box-shadow: 0 6px 0 #dce5de;
+  border-color: var(--line-strong);
+  box-shadow: 0 6px 0 var(--card-shadow);
 }
 @media (max-width: 760px) {
   .stats-strip {

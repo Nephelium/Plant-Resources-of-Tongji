@@ -321,7 +321,7 @@ onMounted(async () => {
   padding: 14px;
   border-radius: 14px;
   border: 1px solid rgba(117, 188, 173, 0.45);
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--surface);
 }
 
 .static-card img {
@@ -345,7 +345,7 @@ onMounted(async () => {
   width: min(420px, 100%);
   padding: 16px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.64);
+  background: var(--surface);
   border: 1px solid rgba(132, 183, 168, 0.35);
 }
 
@@ -383,7 +383,7 @@ button {
   min-width: 104px;
   padding: 0 16px;
   height: 34px;
-  color: #fff;
+  color: var(--on-primary);
   background: var(--primary);
   cursor: pointer;
   white-space: nowrap;
@@ -399,7 +399,7 @@ button {
 
 .notice {
   margin-bottom: 10px;
-  color: #2f7e73;
+  color: var(--primary);
 }
 
 .profile-form {
@@ -407,7 +407,7 @@ button {
   padding: 14px;
   border: 1px solid rgba(132, 183, 168, 0.32);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.56);
+  background: var(--surface);
 }
 
 .import-row {
@@ -423,7 +423,7 @@ button {
 
 .hint {
   margin: 10px 0 0;
-  color: #5f847c;
+  color: var(--primary);
   font-size: 13px;
 }
 
@@ -455,7 +455,7 @@ button {
 
 .setting-item span {
   font-size: 15px;
-  color: #4f756d;
+  color: var(--primary);
 }
 
 .switch {
@@ -463,7 +463,7 @@ button {
   align-items: center;
   gap: 6px;
   font-size: 15px;
-  color: #315d55;
+  color: var(--primary);
 }
 
 .switch input[type="checkbox"] {
@@ -472,7 +472,7 @@ button {
   min-height: 16px;
   min-width: 16px;
   margin: 0;
-  accent-color: #2f7e73;
+  accent-color: var(--primary);
 }
 
 .profile-form h3 {
@@ -491,7 +491,7 @@ button {
 }
 
 .meta {
-  color: #5a7e76;
+  color: var(--primary);
   font-size: 13px;
 }
 

@@ -264,9 +264,9 @@ onBeforeUnmount(() => {
 }
 .tree-panel {
   position: sticky;
-  top: 110px;
+  top: var(--sticky-top);
   padding: 18px;
-  max-height: calc(100dvh - 140px);
+  max-height: calc(100dvh - var(--sticky-top) - 20px);
   display: flex;
   flex-direction: column;
 }
@@ -292,7 +292,7 @@ onBeforeUnmount(() => {
   min-height: 0;
 }
 .family-block {
-  border-bottom: 1px solid #e7eadf;
+  border-bottom: 1px solid var(--line);
 }
 .family-summary {
   display: flex;
@@ -353,12 +353,12 @@ onBeforeUnmount(() => {
 .family-summary:hover,
 .genus-summary:hover,
 .species button:hover {
-  background: #eaf3ec;
+  background: var(--soft);
 }
 .taxon-detail {
   padding: 32px;
   min-height: 610px;
-  scroll-margin-top: 100px;
+  scroll-margin-top: 0;
 }
 .taxon-welcome {
   min-height: 545px;
@@ -367,16 +367,16 @@ onBeforeUnmount(() => {
   justify-content: center;
   align-items: center;
   text-align: center;
-  background: radial-gradient(ellipse at center, #e1eee4cc, transparent 70%);
+  background: radial-gradient(ellipse at center, var(--soft), transparent 70%);
 }
 .welcome-leaf {
   width: 115px;
   height: 115px;
-  border: 1px solid #b0cbb7;
+  border: 1px solid var(--line-strong);
   border-radius: 50%;
   display: grid;
   place-items: center;
-  color: #438363;
+  color: var(--primary);
   margin-bottom: 26px;
 }
 .taxon-welcome h2 {
@@ -393,7 +393,7 @@ onBeforeUnmount(() => {
   gap: 22px;
   align-items: center;
   margin: 15px 0 25px;
-  color: #598568;
+  color: var(--primary);
 }
 .taxonomy-example span {
   width: 38px;

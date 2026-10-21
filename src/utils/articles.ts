@@ -72,6 +72,7 @@ export function renderArticle(article: ArticleDetail) {
     "FIGCAPTION",
   ]);
   const base = new URL(assetUrl(article.basePath), window.location.origin);
+  const colorProbe = document.createElement("canvas").getContext("2d");
   for (const el of [...doc.body.querySelectorAll<HTMLElement>("*")]) {
     if (!allowed.has(el.tagName)) {
       el.replaceWith(...el.childNodes);
@@ -100,9 +101,19 @@ export function renderArticle(article: ArticleDetail) {
     // Original white headings relied on colored blocks removed by the reader.
     // Let light foregrounds inherit the reader's ink to keep them readable.
     const color = el.style.color;
-    const channels = color.match(
+    let channels = color.match(
       /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/,
     );
+    if (color && !channels && colorProbe) {
+      colorProbe.fillStyle = "#000000";
+      colorProbe.fillStyle = color;
+      const hex = colorProbe.fillStyle.match(/^#([\da-f]{6})$/i)?.[1];
+      if (hex)
+        channels = [
+          "",
+          ...[0, 2, 4].map((i) => String(parseInt(hex.slice(i, i + 2), 16))),
+        ] as RegExpMatchArray;
+    }
     if (
       /^(white|whitesmoke|snow|ivory|floralwhite|ghostwhite|transparent)$/i.test(
         color,
@@ -110,6 +121,36 @@ export function renderArticle(article: ArticleDetail) {
       (channels && channels.slice(1, 4).every((value) => Number(value) > 200))
     ) {
       el.style.removeProperty("color");
+    }
+    // Keep original emphasis hues while giving dark paper a readable counterpart.
+    if (el.style.color && channels) {
+      const [r, g, b] = channels.slice(1, 4).map(Number) as [
+        number,
+        number,
+        number,
+      ];
+      const linear = (channel: number) => {
+        const v = channel / 255;
+        return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+      };
+      const luminance = (red: number, green: number, blue: number) =>
+        0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue);
+      const background = luminance(34, 36, 40);
+      let lift = 0;
+      let dark = [r, g, b];
+      while (
+        (luminance(dark[0]!, dark[1]!, dark[2]!) + 0.05) / (background + 0.05) <
+          4.5 &&
+        lift < 1
+      ) {
+        lift += 0.05;
+        dark = [r, g, b].map((channel) =>
+          Math.round(channel + (255 - channel) * Math.min(1, lift)),
+        );
+      }
+      el.style.setProperty("--article-light-color", color);
+      el.style.setProperty("--article-dark-color", `rgb(${dark.join(", ")})`);
+      el.style.color = "var(--article-color)";
     }
     for (const attr of ["src", "href"]) {
       if (!el.hasAttribute(attr)) continue;

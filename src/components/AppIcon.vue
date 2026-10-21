@@ -1,6 +1,8 @@
 <script setup lang="ts">
 withDefaults(defineProps<{ name: string; size?: number }>(), { size: 20 });
 const paths: Record<string, string> = {
+  monitor: "M3 3h18v13H3ZM12 16v5M8 21h8",
+  check: "m5 12 4 4L19 6",
   leaf: "M20 4C10 2 3 7 5 14c2 6 12 6 15-10ZM4 21l10-11M10 14l-1-5M10 14l5 1",
   search: "M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0",
   arrow: "M4 12h16m-6-6 6 6-6 6",
