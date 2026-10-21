@@ -1,6 +1,8 @@
 # 素不莳花 · 同济大学植物资源
 
-> **🌿 在线访问：[https://nephelium.github.io/Plant-Resources-of-Tongji/](https://nephelium.github.io/Plant-Resources-of-Tongji/#/)**
+[![打开素不莳花，在线浏览校园植物](docs/assets/visit-site.svg)](https://nephelium.github.io/Plant-Resources-of-Tongji/#/)
+
+[nephelium.github.io/Plant-Resources-of-Tongji](https://nephelium.github.io/Plant-Resources-of-Tongji/#/)
 
 **和草木打个招呼，校园就多一位老朋友。**
 
