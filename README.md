@@ -1,5 +1,7 @@
 # 素不莳花 · 同济大学植物资源
 
+> **🌿 在线访问：[https://nephelium.github.io/Plant-Resources-of-Tongji/](https://nephelium.github.io/Plant-Resources-of-Tongji/#/)**
+
 **和草木打个招呼，校园就多一位老朋友。**
 
 一份可以沿着地图阅读的校园植物图鉴。这里收录了同济大学四平路校区的植物调查点位、分类资料、植物照片和自然手记，希望让每天经过的树与花，多一个被认出的机会。
