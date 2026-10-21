@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PlantInfo } from "../types";
-import PlantImage from "./PlantImage.vue";
+import PlantGallery from "./PlantGallery.vue";
 import PlantMap from "./PlantMap.vue";
 import AppIcon from "./AppIcon.vue";
 import { periodLabel, plantLink } from "../utils/plants";
@@ -21,10 +21,14 @@ defineProps<{ plant: PlantInfo; compact?: boolean }>();
       >
     </div>
     <div class="profile-body">
-      <figure class="profile-photo">
-        <PlantImage :name="plant.chinese_name" :src="plant.imageUrl" eager />
-        <figcaption>{{ plant.chinese_name }} · 校园植物影像</figcaption>
-      </figure>
+      <div class="profile-photo">
+        <PlantGallery
+          :key="plant.chinese_name"
+          :name="plant.chinese_name"
+          :src="plant.imageUrl"
+          eager
+        />
+      </div>
       <div class="profile-info">
         <div class="eyebrow">植物小档案</div>
         <dl>
@@ -89,11 +93,11 @@ defineProps<{ plant: PlantInfo; compact?: boolean }>();
   align-items: center;
   justify-content: space-between;
   gap: 22px;
-  margin-bottom: 30px;
+  margin-bottom: 25px;
 }
 .profile-heading h1 {
   margin: 12px 0 10px;
-  font-size: 46px;
+  font-size: 42px;
 }
 .latin-name {
   font:
@@ -107,31 +111,18 @@ defineProps<{ plant: PlantInfo; compact?: boolean }>();
 }
 .profile-body {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(240px, 1fr);
-  gap: 38px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(250px, 0.85fr);
+  gap: 28px;
 }
 .profile-photo {
   margin: 0;
 }
-.profile-photo :deep(img) {
-  width: 100%;
-  height: auto;
-  max-height: 600px;
-  object-fit: contain;
-  border-radius: 8px;
-  background: var(--soft);
-}
-.profile-photo figcaption {
-  padding: 12px 0;
-  color: var(--muted);
-  font-size: 11px;
-}
 .profile-info {
   padding: 28px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 21px;
   align-self: start;
-  background: #eee5f3;
+  background: #ffffff;
 }
 dl {
   margin: 18px 0;
@@ -155,7 +146,7 @@ dd {
   display: flex;
   align-items: center;
   gap: 15px;
-  color: #846491;
+  color: #538362;
   margin-top: 25px;
 }
 .profile-note p {
@@ -185,13 +176,13 @@ dd {
 }
 .compact .profile-body {
   gap: 22px;
-  grid-template-columns: minmax(0, 1.2fr) minmax(190px, 1fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.9fr);
 }
 .compact .profile-info {
   padding: 18px;
 }
-.compact .profile-photo :deep(img) {
-  max-height: 430px;
+.compact .profile-photo :deep(.gallery-window) {
+  height: 460px;
 }
 @media (max-width: 1050px) {
   .compact .profile-body {

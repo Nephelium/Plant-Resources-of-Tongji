@@ -29,9 +29,12 @@ async (page) => {
   await page.getByRole("heading", { name: "月桂", exact: true }).waitFor();
   check(
     await page
-      .locator(".profile-photo img")
+      .locator(".profile-photo .photo-source")
+      .first()
       .evaluate((img) =>
-        img.src.includes("/Plant-Resources-of-Tongji/legacy/"),
+        (img.getAttribute("href") || img.getAttribute("src") || "").includes(
+          "/Plant-Resources-of-Tongji/legacy/",
+        ),
       ),
     "子目录植物照片地址正确",
   );

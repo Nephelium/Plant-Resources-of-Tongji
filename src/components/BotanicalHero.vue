@@ -1,33 +1,20 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { ASSET_BASE } from "../env";
 import { plantLink } from "../utils/plants";
 import AppIcon from "./AppIcon.vue";
 import PlantImage from "./PlantImage.vue";
 
 defineEmits<{ explore: [] }>();
-const specimens = [
-  {
-    name: "银杏",
-    latin: "Ginkgo biloba",
-    note: "一把小扇子，轻轻摇着四季。",
-    color: "leaf",
-  },
-  {
-    name: "水杉",
-    latin: "Metasequoia glyptostroboides",
-    note: "抬头，是一整片向上的绿意。",
-    color: "fern",
-  },
-  {
-    name: "玉兰",
-    latin: "Magnolia denudata",
-    note: "还没长叶，春天已经站上枝头。",
-    color: "petal",
-  },
-];
+const props = defineProps<{
+  specimens: Array<{ name: string; latin: string; family: string }>;
+}>();
+const specimens = computed(() => props.specimens);
 const selected = ref(0);
-const specimen = computed(() => specimens[selected.value]!);
+const specimen = computed(() => specimens.value[selected.value]);
+watch(specimens, () => {
+  selected.value = 0;
+});
 const scene = ref<HTMLElement>();
 const motionPaused = ref(false);
 const reducedMotion = ref(false);
@@ -64,11 +51,11 @@ function toggleMotion() {
 }
 function selectWithKey(event: KeyboardEvent, index: number) {
   let next = index;
-  if (event.key === "ArrowRight") next = (index + 1) % specimens.length;
+  if (event.key === "ArrowRight") next = (index + 1) % specimens.value.length;
   else if (event.key === "ArrowLeft")
-    next = (index + specimens.length - 1) % specimens.length;
+    next = (index + specimens.value.length - 1) % specimens.value.length;
   else if (event.key === "Home") next = 0;
-  else if (event.key === "End") next = specimens.length - 1;
+  else if (event.key === "End") next = specimens.value.length - 1;
   else return;
   event.preventDefault();
   selected.value = next;
@@ -132,7 +119,7 @@ onBeforeUnmount(() => media?.removeEventListener("change", updateMotion));
       <span class="floating-note" aria-hidden="true"
         >今天也想<br /><strong>亲近一点自然</strong><span>↙</span></span
       >
-      <div class="specimen-widget">
+      <div v-if="specimen" class="specimen-widget">
         <div class="specimen-tabs" role="tablist" aria-label="今天认识哪株植物">
           <button
             v-for="(plant, i) in specimens"
@@ -168,7 +155,7 @@ onBeforeUnmount(() => media?.removeEventListener("change", updateMotion));
                   >{{ specimen.name }}
                   <AppIcon name="arrow" :size="16" /></strong
                 ><em>{{ specimen.latin }}</em
-                ><span>{{ specimen.note }}</span>
+                ><span>{{ specimen.family }} · 今日认识一株</span>
               </div>
             </RouterLink>
           </Transition>
@@ -377,10 +364,14 @@ h1 em::after {
   padding-left: 20px;
 }
 .specimen-tabs button {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
   border: 1px solid #a3b8a8;
   border-bottom: 0;
   min-height: 34px;
-  padding: 5px 18px;
+  padding: 5px 10px;
   border-radius: 12px 12px 0 0;
   font-size: 12px;
   font-weight: 600;
@@ -409,7 +400,7 @@ h1 em::after {
     0 10px 20px #254b3212;
   min-height: 112px;
 }
-.specimen-card:deep(img) {
+.specimen-card :deep(.plant-image) {
   width: 82px;
   height: 82px;
   object-fit: cover;
@@ -547,7 +538,7 @@ h1 em::after {
     gap: 10px;
     padding: 10px;
   }
-  .specimen-card:deep(img) {
+  .specimen-card :deep(.plant-image) {
     width: 60px;
     height: 70px;
   }
@@ -623,7 +614,7 @@ h1 em::after {
     grid-template-columns: 62px minmax(0, 1fr);
     min-height: 93px;
   }
-  .specimen-card:deep(img) {
+  .specimen-card :deep(.plant-image) {
     width: 62px;
     height: 68px;
   }

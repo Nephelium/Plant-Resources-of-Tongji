@@ -5,7 +5,7 @@ import { api } from "../api";
 import type { PlantInfo } from "../types";
 import AppIcon from "../components/AppIcon.vue";
 import PageHeading from "../components/PageHeading.vue";
-import PlantImage from "../components/PlantImage.vue";
+import PlantGallery from "../components/PlantGallery.vue";
 import { plantLink } from "../utils/plants";
 import { readPreference, writePreference } from "../utils/storage";
 const route = useRoute(),
@@ -184,19 +184,19 @@ onMounted(load);
         class="plant-card"
         v-reveal
       >
-        <RouterLink
-          :to="plantLink(plant.chinese_name)"
-          class="plant-card-image"
-          :aria-label="'查看' + plant.chinese_name"
-          ><PlantImage
+        <div class="plant-card-image">
+          <PlantGallery
             :name="plant.chinese_name"
             :src="plant.imageUrl"
-          /><span>{{ plant.category }}</span></RouterLink
-        >
+            compact
+          />
+          <span>{{ plant.category }}</span>
+        </div>
         <div class="plant-card-copy">
           <RouterLink
             :to="plantLink(plant.chinese_name)"
             class="plant-card-name"
+            :aria-label="'查看' + plant.chinese_name"
             ><h2>{{ plant.chinese_name }}</h2>
             <AppIcon name="arrow" :size="16"
           /></RouterLink>
@@ -347,7 +347,8 @@ onMounted(load);
 }
 .plant-card-image {
   display: block;
-  height: 212px;
+  aspect-ratio: 4 / 3;
+  height: auto;
   position: relative;
   overflow: hidden;
   background: var(--soft);
@@ -364,6 +365,7 @@ onMounted(load);
 }
 .plant-card-image > span {
   position: absolute;
+  pointer-events: none;
   left: 12px;
   bottom: 12px;
   color: #24573b;
@@ -487,7 +489,8 @@ onMounted(load);
 }
 @media (max-width: 480px) {
   .plant-card-image {
-    height: 175px;
+    aspect-ratio: 1;
+    height: auto;
   }
   .plant-card-copy {
     padding: 14px 12px;

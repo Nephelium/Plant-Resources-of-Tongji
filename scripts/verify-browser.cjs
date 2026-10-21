@@ -74,20 +74,21 @@ async (page) => {
   );
   check((await page.locator(".map-dark").count()) === 1, "默认深色底图");
   await page.locator(".botanical-art").evaluate((img) => img.decode());
-  await page.getByRole("tab", { name: "认识玉兰" }).click();
-  await page.getByRole("link", { name: "打开玉兰植物档案" }).waitFor();
+  const specimenTabs = page.getByRole("tab");
+  await specimenTabs.nth(2).click();
+  const selectedName = (
+    await specimenTabs.nth(2).getAttribute("aria-label")
+  ).replace(/^认识/, "");
+  await page
+    .getByRole("link", { name: "打开" + selectedName + "植物档案" })
+    .waitFor();
   check(
-    (await page
-      .getByRole("tab", { name: "认识玉兰" })
-      .getAttribute("aria-selected")) === "true",
-    "首页植物卡片可点选",
+    (await specimenTabs.nth(2).getAttribute("aria-selected")) === "true",
+    "首页每日植物卡片可点选",
   );
   await page.keyboard.press("ArrowLeft");
-  await page.getByRole("link", { name: "打开水杉植物档案" }).waitFor();
   check(
-    await page
-      .getByRole("tab", { name: "认识水杉" })
-      .evaluate((el) => el === document.activeElement),
+    await specimenTabs.nth(1).evaluate((el) => el === document.activeElement),
     "首页植物卡片支持方向键与焦点移动",
   );
   await page.getByRole("button", { name: "暂停首页漂浮动效" }).click();
@@ -118,8 +119,8 @@ async (page) => {
     "减少动画偏好停用装饰动画",
   );
   await page.emulateMedia({ reducedMotion: "no-preference" });
-  await page.getByRole("tab", { name: "认识银杏" }).click();
-  await page.getByRole("link", { name: "打开银杏植物档案" }).waitFor();
+  await specimenTabs.nth(0).click();
+  await page.locator(".specimen-card").waitFor();
   await screenshot("home-desktop");
   await page.getByRole("link", { name: "沿着地图，遇见植物" }).click();
   await page.waitForFunction(() => scrollY > 400);

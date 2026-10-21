@@ -17,7 +17,8 @@
 参考 [PhoneticToolbox](https://www.phonetictoolbox.com/) 的圆润导航、立体按钮与轻盈卡片，使用叶绿、深绿与白色，并用少量花瓣粉点缀，让校园植物图鉴更有散步时的闲适感。
 
 - **会动的植物插画**：银杏叶、花朵和蕨叶轻轻漂浮，鼠标经过时随指针小幅摆动，可手动暂停。
-- **可以点选的植物卡片**：首页切换银杏、水杉与玉兰，查看真实照片并打开植物档案，支持键盘左右键。
+- **每天遇见不同植物**：首页与地图侧栏按北京时间每天选出三种植物，当天刷新保持一致。相识卡片每次进入随机选四种，还可以点击换一组。
+- **照片一张张看**：拼接长图在页面中按单张照片展示，可左右滑动、点击放大。大图支持方向键、触摸切换、细节放大和 Esc 关闭。
 - **明确的操作反馈**：按钮有抬起和按下效果，卡片悬停浮起，内容随滚动出现，页面切换轻柔过渡。
 - **照顾不同使用习惯**：触控不触发鼠标倾斜，系统开启减少动画后停用装饰动画，功能仍正常使用。
 
@@ -52,9 +53,21 @@
 
 植物档案使用中文名作为主标题，学名单独排版。已有照片以完整比例展示，花期和果期缺少记录时明确标识。可以继续查看同科植物，或返回地图寻找它。
 
+照片不会整张拼图挤在一个小框内。分类、档案、检索卡片和首页共用逐张图库，鼠标可拖动，手机可滑动；点击后打开完整大图，放大查看细节。
+
 ![分类目录和所选植物](output/playwright/screenshots/taxon-desktop.png)
 
 ![植物档案](output/playwright/screenshots/plant-desktop.png)
+
+![芭蕉的独立照片与图库](output/playwright/screenshots/gallery-taxon-desktop.png)
+
+![照片大图查看器](output/playwright/screenshots/gallery-lightbox.png)
+
+首页的相识卡片会随机选取新的植物，也可以随时换一组。
+
+![随机植物相识卡片](output/playwright/screenshots/discovery-desktop.png)
+
+图库与每日选择的实现及维护方法见[照片浏览说明](docs/photo-galleries.md)。
 
 ### 文章精选：把路过的风景读成故事
 
@@ -89,6 +102,8 @@
 | <img src="output/playwright/screenshots/home-mobile.png" width="320" alt="手机首页"> | <img src="output/playwright/screenshots/search-mobile.png" width="320" alt="手机图鉴"> |
 | 手机文章 | 手机联系 |
 | <img src="output/playwright/screenshots/articles-mobile.png" width="320" alt="手机文章目录"> | <img src="output/playwright/screenshots/contact-mobile.png" width="320" alt="手机联系页"> |
+
+<img src="output/playwright/screenshots/gallery-mobile.png" width="320" alt="手机植物照片图库">
 
 ## 快速开始
 
@@ -173,7 +188,8 @@ npm run dev -- --mode dynamic --host 127.0.0.1 --port 5173
 
 1. 把照片放入 `public/legacy/images/plants/`，以植物中文名命名。
 2. 运行 `npm run assets:index`，更新 `src/data/plant-images.json`。
-3. 打开植物图鉴检查缩略图与完整照片。
+3. 运行 `python scripts/index-photo-regions.py`，识别拼接影像中的独立照片区域。此维护脚本需要 Pillow、NumPy。
+4. 对照原图检查照片分隔范围，再打开植物图鉴检查缩略图、滑动和完整大图。
 
 照片索引保留实际扩展名及大小写，支持原有的 `.jpg`、`.JPG`、`.png` 等文件。不会自动将其他植物的照片替代缺图。
 
@@ -197,6 +213,7 @@ frontend/
 │  │  ├─ PlantMap.vue           # Canvas 地图、底图切换与展开
 │  │  ├─ PlantProfile.vue       # 共用植物档案
 │  │  ├─ PlantImage.vue         # 照片与缺图占位
+│  │  ├─ PlantGallery.vue       # 照片滑动、放大与触摸查看
 │  │  ├─ PageHeading.vue        # 页面标题
 │  │  └─ AppIcon.vue            # SVG 界面图标
 │  ├─ data/plant-images.json    # 按实际文件名生成的照片索引

@@ -1,13 +1,18 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { api } from "../api";
 import BotanicalHero from "../components/BotanicalHero.vue";
 import type { PlantFeature } from "../types";
 import AppIcon from "../components/AppIcon.vue";
 import PlantMap from "../components/PlantMap.vue";
-import PlantImage from "../components/PlantImage.vue";
-import { plantColor, plantLink } from "../utils/plants";
+import PlantGallery from "../components/PlantGallery.vue";
+import {
+  campusDayKey,
+  pickPlants,
+  type DiscoveryPlant,
+} from "../utils/discovery";
+import { plantColor, plantImage, plantLink } from "../utils/plants";
 const route = useRoute();
 const router = useRouter();
 const keyword = ref(String(route.query.q || ""));
@@ -16,6 +21,42 @@ const features = ref<PlantFeature[]>([]);
 const loading = ref(true);
 const error = ref("");
 const showAll = ref(false);
+const today = ref(campusDayKey());
+const photoSpecies = computed<DiscoveryPlant[]>(() => {
+  const pool = new Map<string, DiscoveryPlant>();
+  for (const feature of features.value) {
+    const p = feature.properties;
+    if (p.chinese_name.trim() && plantImage(p.chinese_name))
+      pool.set(p.chinese_name, {
+        name: p.chinese_name,
+        latin: p.scientific_name,
+        family: p.category,
+      });
+  }
+  return [...pool.values()].sort((a, b) =>
+    a.name.localeCompare(b.name, "zh-CN"),
+  );
+});
+const dailySpecimens = computed(() =>
+  pickPlants(photoSpecies.value, 3, "campus-" + today.value),
+);
+const discoveries = ref<DiscoveryPlant[]>([]);
+function refreshDiscoveries() {
+  const exclude = new Set(
+    [...dailySpecimens.value, ...discoveries.value].map((p) => p.name),
+  );
+  const available = photoSpecies.value.filter((p) => !exclude.has(p.name));
+  discoveries.value = pickPlants(
+    available.length >= 4 ? available : photoSpecies.value,
+    4,
+    String(Math.random()),
+  );
+}
+watch([photoSpecies, today], refreshDiscoveries);
+let dayTimer: ReturnType<typeof setInterval> | undefined;
+const updateDay = () => {
+  today.value = campusDayKey();
+};
 const families = computed(() =>
   [
     ...new Set(
@@ -102,11 +143,19 @@ watch(
     family.value = String(query.family || "");
   },
 );
-onMounted(load);
+onMounted(() => {
+  void load();
+  dayTimer = setInterval(updateDay, 60_000);
+  document.addEventListener("visibilitychange", updateDay);
+});
+onBeforeUnmount(() => {
+  clearInterval(dayTimer);
+  document.removeEventListener("visibilitychange", updateDay);
+});
 </script>
 <template>
   <section>
-    <BotanicalHero @explore="explore" />
+    <BotanicalHero :specimens="dailySpecimens" @explore="explore" />
     <div class="stats-strip" v-reveal aria-label="植物资源概览">
       <div>
         <strong>{{ loading ? "—" : speciesCount }}</strong
@@ -166,16 +215,19 @@ onMounted(load);
             <option v-for="name in families" :key="name">{{ name }}</option>
           </select></label
         >
-        <div class="quick-plants">
-          <button
-            v-for="name in ['银杏', '水杉', '玉兰']"
-            :key="name"
-            class="chip"
-            :aria-pressed="keyword === name"
-            @click="keyword = keyword === name ? '' : name"
-          >
-            {{ name }}
-          </button>
+        <div v-if="dailySpecimens.length" class="daily-plants">
+          <span>今日遇见</span>
+          <div class="quick-plants">
+            <button
+              v-for="plant in dailySpecimens"
+              :key="plant.name"
+              class="chip"
+              :aria-pressed="keyword === plant.name"
+              @click="keyword = keyword === plant.name ? '' : plant.name"
+            >
+              {{ plant.name }}
+            </button>
+          </div>
         </div>
         <div class="map-result-count" role="status">
           <span
@@ -233,35 +285,33 @@ onMounted(load);
         <div class="eyebrow">02 / A CLOSER LOOK</div>
         <h2>熟悉的校园，新的相识</h2>
       </div>
-      <RouterLink to="/search" class="text-link"
-        >浏览全部 <AppIcon name="arrow" :size="16"
-      /></RouterLink>
+      <div class="discovery-actions">
+        <button class="text-link" @click="refreshDiscoveries">
+          <AppIcon name="reset" :size="15" />换一组</button
+        ><RouterLink to="/search" class="text-link"
+          >浏览全部 <AppIcon name="arrow" :size="16"
+        /></RouterLink>
+      </div>
     </div>
     <div class="discovery-grid">
-      <RouterLink
-        v-for="(name, i) in ['银杏', '水杉', '玉兰', '鸡爪槭']"
-        :key="name"
-        :to="plantLink(name)"
+      <article
+        v-for="(plant, i) in discoveries"
+        :key="plant.name"
         class="discovery-card"
         v-reveal="i * 65"
-        ><div class="discovery-image">
-          <PlantImage :name="name" /><span>0{{ i + 1 }}</span>
-        </div>
-        <div class="discovery-title">
-          <h3>{{ name }}</h3>
-          <AppIcon name="arrow" :size="18" />
-        </div>
-        <p>
-          {{
-            [
-              "扇叶之间，收藏四季",
-              "向天空生长的一行诗",
-              "枝头的第一封春信",
-              "一片叶，也有自己的风景",
-            ][i]
-          }}
-        </p></RouterLink
       >
+        <div class="discovery-image">
+          <PlantGallery :name="plant.name" compact /><span>0{{ i + 1 }}</span>
+        </div>
+        <RouterLink :to="plantLink(plant.name)" class="discovery-title"
+          ><h3>{{ plant.name }}</h3>
+          <AppIcon name="arrow" :size="18"
+        /></RouterLink>
+        <p>
+          {{ plant.family
+          }}<span class="discovery-latin">{{ plant.latin }}</span>
+        </p>
+      </article>
     </div>
     <RouterLink to="/articles" class="journal-banner" v-reveal
       ><div>
@@ -462,12 +512,13 @@ onMounted(load);
 }
 .discovery-image {
   position: relative;
-  height: 220px;
+  aspect-ratio: 4 / 3;
+  height: auto;
   overflow: hidden;
   border-radius: 8px;
   background: var(--soft);
 }
-.discovery-image :deep(img) {
+.discovery-image :deep(.plant-image) {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -475,13 +526,14 @@ onMounted(load);
   transition: transform 0.5s;
   filter: saturate(1.06);
 }
-.discovery-card:hover :deep(img) {
+.discovery-card:hover :deep(.gallery-slide .plant-image) {
   transform: scale(1.04);
 }
 .discovery-image > span {
   position: absolute;
   top: 12px;
   left: 14px;
+  pointer-events: none;
   color: white;
   font:
     italic 14px Georgia,
@@ -756,6 +808,65 @@ onMounted(load);
   }
   .discovery-title h3 {
     font-size: 18px;
+  }
+}
+
+.daily-plants {
+  margin: 18px 0 15px;
+}
+.daily-plants > span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+.daily-plants .quick-plants {
+  margin: 0;
+  gap: 7px;
+}
+.discovery-actions {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+}
+.discovery-actions > button {
+  border: 0;
+  background: transparent;
+  padding: 5px 0;
+  font-size: 12px;
+}
+.discovery-latin {
+  display: block;
+  font:
+    italic 12px/1.5 Georgia,
+    serif;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+}
+.discovery-card > p {
+  min-height: 42px;
+  padding-bottom: 20px;
+}
+.discovery-image .plant-gallery {
+  height: 100%;
+}
+@media (max-width: 600px) {
+  .discovery-actions {
+    gap: 14px;
+  }
+  .discovery-actions > a {
+    font-size: 11px;
+  }
+  .discovery-image {
+    aspect-ratio: 1;
+    height: auto;
+  }
+  .discovery-card > p {
+    min-height: 55px;
+  }
+  .discovery-latin {
+    font-size: 10px;
   }
 }
 </style>
