@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from "vue";
 import { api } from "../api";
 import { ASSET_BASE, STATIC_MODE } from "../env";
+import PageHeading from "../components/PageHeading.vue";
 import type { AdminSummary, BbsPost, BbsSettings, SiteProfile } from "../types";
 
 const ADMIN_TOKEN_KEY = "tongjiplants_admin_token";
@@ -18,7 +19,8 @@ const postFilter = ref<"all" | "pending" | "approved" | "rejected">("all");
 const wechatUrl = ref("");
 const importing = ref(false);
 const qrcodeImage = `${ASSET_BASE}legacy/images/qrcode.jpg`;
-const staticNotice = "当前为静态展示站，后台管理功能不可用，请联系公众号或邮箱。";
+const staticNotice =
+  "此站暂未开放后台管理。需要补充资料时，请通过公众号或邮箱联系项目组。";
 const bbsSettings = ref<BbsSettings>({
   pageSize: 5,
   requireAudit: true,
@@ -38,7 +40,9 @@ const filteredPosts = computed(() => {
   if (postFilter.value === "all") {
     return posts.value;
   }
-  return posts.value.filter((item) => (item.audit ?? "approved") === postFilter.value);
+  return posts.value.filter(
+    (item) => (item.audit ?? "approved") === postFilter.value,
+  );
 });
 
 const loadData = async () => {
@@ -89,7 +93,10 @@ const logout = () => {
   notice.value = "";
 };
 
-const updatePost = async (postId: number, action: "hide" | "show" | "delete" | "approve" | "reject") => {
+const updatePost = async (
+  postId: number,
+  action: "hide" | "show" | "delete" | "approve" | "reject",
+) => {
   const actionText =
     action === "hide"
       ? "隐藏"
@@ -127,7 +134,10 @@ const importFromWechat = async () => {
   }
   importing.value = true;
   try {
-    const result = await api.importWechatArticle(adminToken.value, wechatUrl.value.trim());
+    const result = await api.importWechatArticle(
+      adminToken.value,
+      wechatUrl.value.trim(),
+    );
     notice.value = `导入成功：${result.title}`;
     wechatUrl.value = "";
   } catch (error) {
@@ -139,6 +149,7 @@ const importFromWechat = async () => {
 };
 
 onMounted(async () => {
+  if (STATIC_MODE) return;
   const cached = localStorage.getItem(ADMIN_TOKEN_KEY);
   if (!cached) {
     return;
@@ -155,12 +166,16 @@ onMounted(async () => {
 
 <template>
   <section class="section-panel admin-panel">
-    <h2>留言板后台管理</h2>
+    <PageHeading
+      eyebrow="SITE MANAGEMENT / 网站管理"
+      title="照料这片草木"
+      description="管理留言、站点资料和植物手记。"
+    />
 
     <section v-if="STATIC_MODE" class="static-card">
       <img :src="qrcodeImage" alt="公众号二维码" />
       <div>
-        <h3>静态网站提示</h3>
+        <h3>资料与交流</h3>
         <p>{{ staticNotice }}</p>
         <p>邮箱：tongjiplants@163.com</p>
       </div>
@@ -168,8 +183,20 @@ onMounted(async () => {
 
     <div v-else-if="!isAuthed" class="login-card">
       <h3>管理员登录</h3>
-      <input v-model="authForm.username" placeholder="管理员账号" />
-      <input v-model="authForm.password" type="password" placeholder="管理员密码" @keyup.enter="login" />
+      <input
+        v-model="authForm.username"
+        aria-label="管理员账号"
+        autocomplete="username"
+        placeholder="管理员账号"
+      />
+      <input
+        v-model="authForm.password"
+        type="password"
+        aria-label="管理员密码"
+        autocomplete="current-password"
+        placeholder="管理员密码"
+        @keyup.enter="login"
+      />
       <button @click="login">登录后台</button>
       <div v-if="authError" class="error">{{ authError }}</div>
     </div>
@@ -187,7 +214,10 @@ onMounted(async () => {
       </div>
 
       <div v-if="summary" class="summary">
-        总帖数：{{ summary.totalPosts }} ｜ 待审：{{ summary.pendingPosts ?? 0 }} ｜ 可见：{{ summary.visiblePosts }} ｜ 隐藏：{{ summary.hiddenPosts }}
+        总帖数：{{ summary.totalPosts }} ｜ 待审：{{
+          summary.pendingPosts ?? 0
+        }}
+        ｜ 可见：{{ summary.visiblePosts }} ｜ 隐藏：{{ summary.hiddenPosts }}
       </div>
       <div v-if="notice" class="notice">{{ notice }}</div>
       <div v-if="loading">加载中...</div>
@@ -197,11 +227,22 @@ onMounted(async () => {
         <div class="profile-grid settings-grid">
           <div class="setting-item">
             <span>每页留言条数</span>
-            <input v-model.number="bbsSettings.pageSize" type="number" min="1" max="30" />
+            <input
+              v-model.number="bbsSettings.pageSize"
+              type="number"
+              min="1"
+              max="30"
+            />
           </div>
           <div class="switch-row">
-            <label class="switch"><input v-model="bbsSettings.requireAudit" type="checkbox" /> 新留言需审核后展示</label>
-            <label class="switch"><input v-model="bbsSettings.sanitizeHtml" type="checkbox" /> 自动过滤 HTML 标签</label>
+            <label class="switch"
+              ><input v-model="bbsSettings.requireAudit" type="checkbox" />
+              新留言需审核后展示</label
+            >
+            <label class="switch"
+              ><input v-model="bbsSettings.sanitizeHtml" type="checkbox" />
+              自动过滤 HTML 标签</label
+            >
           </div>
         </div>
         <button @click="saveBbsSettings">保存留言板设置</button>
@@ -229,16 +270,28 @@ onMounted(async () => {
             placeholder="粘贴公众号文章链接（https://mp.weixin.qq.com/s?...）"
             class="url-input"
           />
-          <button :disabled="importing" @click="importFromWechat">{{ importing ? "导入中..." : "一键导入文章" }}</button>
+          <button :disabled="importing" @click="importFromWechat">
+            {{ importing ? "导入中..." : "一键导入文章" }}
+          </button>
         </div>
-        <p class="hint">导入后会自动生成到文章精选，可继续编辑 Markdown 微调内容。</p>
+        <p class="hint">
+          导入后会自动生成到文章精选，可继续编辑 Markdown 微调内容。
+        </p>
       </section>
 
       <section class="post-list">
         <h3>留言管理</h3>
         <article v-for="post in filteredPosts" :key="post.id" class="post-card">
-          <h3>#{{ post.id }} {{ post.title }} <small>({{ post.status ?? "visible" }} / {{ post.audit ?? "approved" }})</small></h3>
-          <div>{{ post.author }} ｜ {{ new Date(post.createdAt).toLocaleString() }}</div>
+          <h3>
+            #{{ post.id }} {{ post.title }}
+            <small
+              >({{ post.status ?? "visible" }} /
+              {{ post.audit ?? "approved" }})</small
+            >
+          </h3>
+          <div>
+            {{ post.author }} ｜ {{ new Date(post.createdAt).toLocaleString() }}
+          </div>
           <div class="meta">{{ post.email }} ｜ {{ post.ip || "无IP" }}</div>
           <p>{{ post.content }}</p>
           <div class="actions">
@@ -246,7 +299,9 @@ onMounted(async () => {
             <button @click="updatePost(post.id, 'reject')">拒绝</button>
             <button @click="updatePost(post.id, 'show')">显示</button>
             <button @click="updatePost(post.id, 'hide')">隐藏</button>
-            <button class="danger" @click="updatePost(post.id, 'delete')">删除</button>
+            <button class="danger" @click="updatePost(post.id, 'delete')">
+              删除
+            </button>
           </div>
         </article>
       </section>
@@ -256,7 +311,7 @@ onMounted(async () => {
 
 <style scoped>
 .admin-panel {
-  padding: 24px;
+  padding: 28px;
 }
 
 .static-card {
@@ -329,12 +384,13 @@ button {
   padding: 0 16px;
   height: 34px;
   color: #fff;
+  background: var(--primary);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .ghost {
-  background: rgba(45, 116, 106, 0.7);
+  background: #667a57;
 }
 
 .summary {
@@ -387,7 +443,8 @@ button {
 .switch-row {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 18px;
+  flex-wrap: wrap;
   min-height: 36px;
 }
 
@@ -412,6 +469,7 @@ button {
 .switch input[type="checkbox"] {
   width: 16px;
   height: 16px;
+  min-height: 16px;
   min-width: 16px;
   margin: 0;
   accent-color: #2f7e73;
@@ -419,7 +477,8 @@ button {
 
 .profile-form h3 {
   margin: 0 0 10px;
-  font-size: 26px;
+  font-family: var(--display);
+  font-size: 22px;
 }
 
 .post-list {

@@ -10,6 +10,11 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dist-dynamic
+dist-subpath
+.playwright-cli/
+output/playwright/*
+!output/playwright/screenshots/
 *.local
 
 # Editor directories and files

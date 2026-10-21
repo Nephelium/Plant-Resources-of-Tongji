@@ -1,338 +1,850 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
-import { marked } from "marked";
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { api } from "../api";
 import type { ArticleDetail, ArticleSummary } from "../types";
-
-const ARTICLE_FONT_KEY = "tongjiplants_article_font_size";
-const ARTICLE_IMAGE_KEY = "tongjiplants_article_image_width";
-const ARTICLE_LINE_HEIGHT_KEY = "tongjiplants_article_line_height";
-const articles = ref<ArticleSummary[]>([]);
-const current = ref<ArticleDetail | null>(null);
-const loading = ref(false);
-const fontSize = ref(22);
-const imageMaxWidth = ref(560);
-const lineHeight = ref(1.9);
-
-const contentHtml = computed(() => {
-  if (!current.value) {
-    return "";
-  }
-  const html = marked.parse(current.value.markdown, { async: false }) as string;
-  const normalizedQuotes = html.replace(/[‘’＇]/g, "'");
-  const normalizedVar = normalizedQuotes.replace(/\bvar\./gi, '<span class="latin-var">var.</span>');
-  const normalizedQuoted = normalizedVar.replace(/'([^'<>\n]+)'/g, `<span class="no-italic-quote">'$1'</span>`);
-  return normalizedQuoted.replace(/src="(?!https?:\/\/|\/)([^"]+)"/g, `src="${current.value.basePath}$1"`);
+import AppIcon from "../components/AppIcon.vue";
+import PageHeading from "../components/PageHeading.vue";
+import {
+  articleCategory,
+  articleEditorial,
+  articleCover,
+  renderArticle,
+} from "../utils/articles";
+import { readPreference, writePreference } from "../utils/storage";
+const route = useRoute(),
+  router = useRouter();
+const articles = ref<ArticleSummary[]>([]),
+  current = ref<ArticleDetail | null>(null);
+const loading = ref(true),
+  reading = ref(false),
+  error = ref(""),
+  articleError = ref("");
+const category = ref("全部"),
+  keyword = ref("");
+const reader = ref<HTMLElement>(),
+  progress = ref(0);
+function savedNumber(key: string, fallback: number, min: number, max: number) {
+  const n = Number(readPreference(key, String(fallback)));
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+}
+const fontSize = ref(savedNumber("tongjiplants_article_font_size", 18, 15, 30));
+const imageWidth = ref(
+  savedNumber("tongjiplants_article_image_width", 680, 320, 900),
+);
+const lineHeight = ref(
+  savedNumber("tongjiplants_article_line_height", 1.9, 1.4, 2.4),
+);
+let requestId = 0,
+  progressFrame = 0;
+const slug = computed(() => String(route.query.article || ""));
+const filtered = computed(() =>
+  [...articles.value]
+    .sort((a, b) => articleEditorial(a).order - articleEditorial(b).order)
+    .filter(
+      (a) =>
+        (category.value === "全部" || articleCategory(a) === category.value) &&
+        a.title.toLowerCase().includes(keyword.value.trim().toLowerCase()),
+    ),
+);
+const rendered = computed(() =>
+  current.value ? renderArticle(current.value) : { html: "", toc: [] },
+);
+const currentIndex = computed(() =>
+  articles.value.findIndex((a) => a.slug === slug.value),
+);
+const adjacent = computed(() => articles.value[currentIndex.value + 1]);
+const readerStyle = computed(() => ({
+  "--article-font-size": fontSize.value + "px",
+  "--article-image-max": imageWidth.value + "px",
+  "--article-line-height": String(lineHeight.value),
+}));
+watch([fontSize, imageWidth, lineHeight], () => {
+  writePreference("tongjiplants_article_font_size", String(fontSize.value));
+  writePreference("tongjiplants_article_image_width", String(imageWidth.value));
+  writePreference("tongjiplants_article_line_height", String(lineHeight.value));
 });
-
-const loadArticle = async (slug: string) => {
+async function loadList() {
   loading.value = true;
+  error.value = "";
   try {
-    current.value = await api.getArticle(slug);
+    articles.value = await api.getArticles();
+  } catch {
+    error.value = "文章目录暂时没有加载成功。";
   } finally {
     loading.value = false;
   }
-};
-
-const articleStyle = computed(() => ({
-  "--article-font-size": `${fontSize.value}px`,
-  "--article-image-max": `${imageMaxWidth.value}px`,
-  "--article-line-height": `${lineHeight.value}`,
-}));
-
-const persistReaderStyle = () => {
-  localStorage.setItem(ARTICLE_FONT_KEY, String(fontSize.value));
-  localStorage.setItem(ARTICLE_IMAGE_KEY, String(imageMaxWidth.value));
-  localStorage.setItem(ARTICLE_LINE_HEIGHT_KEY, String(lineHeight.value));
-};
-
-const increaseFont = () => {
-  fontSize.value = Math.min(30, fontSize.value + 1);
-  persistReaderStyle();
-};
-
-const decreaseFont = () => {
-  fontSize.value = Math.max(15, fontSize.value - 1);
-  persistReaderStyle();
-};
-
-const enlargeImage = () => {
-  imageMaxWidth.value = Math.min(900, imageMaxWidth.value + 40);
-  persistReaderStyle();
-};
-
-const shrinkImage = () => {
-  imageMaxWidth.value = Math.max(320, imageMaxWidth.value - 40);
-  persistReaderStyle();
-};
-
-const increaseLineHeight = () => {
-  lineHeight.value = Math.min(2.4, Number((lineHeight.value + 0.1).toFixed(2)));
-  persistReaderStyle();
-};
-
-const decreaseLineHeight = () => {
-  lineHeight.value = Math.max(1.4, Number((lineHeight.value - 0.1).toFixed(2)));
-  persistReaderStyle();
-};
-
+}
+async function loadArticle() {
+  const id = ++requestId;
+  current.value = null;
+  articleError.value = "";
+  progress.value = 0;
+  if (!slug.value) {
+    reading.value = false;
+    return;
+  }
+  reading.value = true;
+  try {
+    const data = await api.getArticle(slug.value);
+    if (id === requestId) {
+      current.value = data;
+      await nextTick();
+      updateProgress();
+    }
+  } catch {
+    if (id === requestId)
+      articleError.value = "这篇文章暂时无法打开，请重试或选择其他文章。";
+  } finally {
+    if (id === requestId) reading.value = false;
+  }
+}
+function openArticle(value: string) {
+  void router.push({ query: { article: value } });
+  window.scrollTo({ top: 0 });
+}
+function updateProgress() {
+  cancelAnimationFrame(progressFrame);
+  progressFrame = requestAnimationFrame(() => {
+    if (!reader.value) {
+      progress.value = 0;
+      return;
+    }
+    const rect = reader.value.getBoundingClientRect();
+    const distance = rect.height - window.innerHeight + 130;
+    progress.value =
+      distance > 0
+        ? Math.min(100, Math.max(0, ((130 - rect.top) / distance) * 100))
+        : 100;
+  });
+}
+function goToSection(id: string) {
+  document.getElementById(id)?.scrollIntoView({ block: "start" });
+}
+function backTop() {
+  window.scrollTo({ top: 0 });
+}
+function resetReader() {
+  fontSize.value = 18;
+  imageWidth.value = 680;
+  lineHeight.value = 1.9;
+}
+watch(slug, loadArticle);
 onMounted(async () => {
-  const savedFont = Number(localStorage.getItem(ARTICLE_FONT_KEY) ?? "");
-  const savedImage = Number(localStorage.getItem(ARTICLE_IMAGE_KEY) ?? "");
-  const savedLine = Number(localStorage.getItem(ARTICLE_LINE_HEIGHT_KEY) ?? "");
-  if (!Number.isNaN(savedFont) && savedFont >= 15 && savedFont <= 30) {
-    fontSize.value = savedFont;
-  }
-  if (!Number.isNaN(savedImage) && savedImage >= 320 && savedImage <= 900) {
-    imageMaxWidth.value = savedImage;
-  }
-  if (!Number.isNaN(savedLine) && savedLine >= 1.4 && savedLine <= 2.4) {
-    lineHeight.value = savedLine;
-  }
-  articles.value = await api.getArticles();
-  if (articles.value.length) {
-    await loadArticle(articles.value[0].slug);
-  }
+  window.addEventListener("scroll", updateProgress, { passive: true });
+  window.addEventListener("resize", updateProgress);
+  await Promise.all([loadList(), loadArticle()]);
+});
+onBeforeUnmount(() => {
+  requestId++;
+  cancelAnimationFrame(progressFrame);
+  window.removeEventListener("scroll", updateProgress);
+  window.removeEventListener("resize", updateProgress);
 });
 </script>
-
 <template>
-  <section class="article-layout">
-    <aside class="section-panel article-list">
-      <h3>文章列表</h3>
-      <button v-for="item in articles" :key="item.slug" class="article-item" @click="loadArticle(item.slug)">
-        {{ item.title }}
-      </button>
-    </aside>
-    <article class="section-panel article-content">
-      <div class="reader-toolbar">
-        <span>阅读设置</span>
-        <button class="tool-btn" @click="decreaseFont">A-</button>
-        <button class="tool-btn" @click="increaseFont">A+</button>
-        <button class="tool-btn" @click="shrinkImage">图片-</button>
-        <button class="tool-btn" @click="enlargeImage">图片+</button>
-        <button class="tool-btn" @click="decreaseLineHeight">行距-</button>
-        <button class="tool-btn" @click="increaseLineHeight">行距+</button>
+  <section>
+    <template v-if="!slug">
+      <PageHeading
+        eyebrow="FIELD NOTES / 校园自然手记"
+        title="草木之间，有故事发生"
+        description="把调绘时的脚步、枝叶间的发现，还有名字背后的学问，一页页记下来。"
+        ><span class="badge">{{ articles.length }} 篇手记</span></PageHeading
+      >
+      <div class="article-filters">
+        <div role="group" aria-label="文章分类">
+          <button
+            v-for="name in ['全部', '校园手记', '名字与学问']"
+            :key="name"
+            class="chip"
+            :aria-pressed="category === name"
+            @click="category = name"
+          >
+            {{ name }}
+          </button>
+        </div>
+        <label class="search-field"
+          ><AppIcon name="search" :size="17" /><input
+            v-model="keyword"
+            type="search"
+            aria-label="搜索文章标题"
+            placeholder="寻找一篇手记"
+        /></label>
       </div>
-      <template v-if="loading">
-        <p>加载中...</p>
-      </template>
-      <template v-else-if="current">
-        <div class="markdown-body" :style="articleStyle" v-html="contentHtml"></div>
-      </template>
-      <template v-else>
-        <p>请在左侧选择文章。</p>
-      </template>
-    </article>
+      <div v-if="error" class="error-state" role="alert">
+        {{ error }} <button @click="loadList">重新加载</button>
+      </div>
+      <div v-else-if="loading" class="articles-grid">
+        <div v-for="n in 6" :key="n" class="skeleton"></div>
+      </div>
+      <div v-else-if="!filtered.length" class="empty-state section-panel">
+        <AppIcon name="book" :size="40" />
+        <h2>没有匹配的手记</h2>
+        <p>换个关键词，或浏览全部文章。</p>
+        <button
+          @click="
+            keyword = '';
+            category = '全部';
+          "
+        >
+          浏览全部手记
+        </button>
+      </div>
+      <div v-else class="articles-grid">
+        <RouterLink
+          v-for="(item, i) in filtered"
+          :key="item.slug"
+          :to="{ query: { article: item.slug } }"
+          class="article-card"
+          :class="{
+            featured: i === 0 && category === '全部' && !keyword.trim(),
+          }"
+          v-reveal
+          ><div
+            class="article-cover"
+            :class="{ 'text-cover': !articleCover(item) }"
+          >
+            <img
+              v-if="articleCover(item)"
+              :src="articleCover(item)"
+              :alt="item.title + ' · 主题插画'"
+              :loading="i < 2 ? 'eager' : 'lazy'"
+              decoding="async"
+              width="1536"
+              height="1024"
+            /><template v-else
+              ><AppIcon name="book" :size="46" /><span>{{
+                item.title.includes("资源合集")
+                  ? "草木收藏夹"
+                  : item.title.includes("读音")
+                    ? "草木之音"
+                    : "草木之名"
+              }}</span
+              ><small>BOTANICAL NOTES</small></template
+            ><span class="article-number">{{
+              String(i + 1).padStart(2, "0")
+            }}</span>
+          </div>
+          <div class="article-copy">
+            <span class="eyebrow">{{ articleCategory(item) }}</span>
+            <h2>
+              {{
+                item.title
+                  .replace(
+                    /^地图纪\s*[|｜]\s*(?:(?:番外篇|预告篇)[：:]\s*)?/,
+                    "",
+                  )
+                  .replace(/\s*[|｜]\s*/g, " · ")
+              }}
+            </h2>
+            <p class="article-summary">{{ articleEditorial(item).summary }}</p>
+            <span class="article-open"
+              >阅读手记 <AppIcon name="arrow" :size="17"
+            /></span></div
+        ></RouterLink>
+      </div>
+    </template>
+    <template v-else>
+      <div
+        class="reading-progress"
+        :style="{ transform: 'scaleX(' + progress / 100 + ')' }"
+      ></div>
+      <div class="reader-topbar">
+        <RouterLink to="/articles" class="text-link"
+          ><AppIcon name="back" :size="16" />全部手记</RouterLink
+        ><span class="eyebrow">FIELD NOTES</span
+        ><span class="reading-percent">{{ Math.round(progress) }}% 已读</span>
+      </div>
+      <div
+        v-if="reading"
+        class="skeleton reader-loading"
+        role="status"
+        aria-label="正在加载文章"
+      ></div>
+      <div v-else-if="articleError" class="error-state" role="alert">
+        {{ articleError }} <button @click="loadArticle">重新加载</button>
+      </div>
+      <div v-else-if="current" class="reader-layout">
+        <aside class="reader-aside">
+          <details class="reader-settings" open>
+            <summary>阅读设置</summary>
+            <label
+              >字号 <span>{{ fontSize }} px</span
+              ><input
+                v-model.number="fontSize"
+                type="range"
+                min="15"
+                max="30"
+                aria-label="文章字号" /></label
+            ><label
+              >行距 <span>{{ lineHeight.toFixed(1) }}</span
+              ><input
+                v-model.number="lineHeight"
+                type="range"
+                min="1.4"
+                max="2.4"
+                step=".1"
+                aria-label="文章行距" /></label
+            ><label
+              >图片宽度 <span>{{ imageWidth }} px</span
+              ><input
+                v-model.number="imageWidth"
+                type="range"
+                min="320"
+                max="900"
+                step="20"
+                aria-label="文章图片宽度" /></label
+            ><button @click="resetReader">恢复默认</button>
+          </details>
+          <nav
+            v-if="rendered.toc.length > 1"
+            class="article-toc"
+            aria-label="文章目录"
+          >
+            <h3>文章目录</h3>
+            <button
+              v-for="item in rendered.toc"
+              :key="item.id"
+              @click="goToSection(item.id)"
+            >
+              {{ item.text }}
+            </button>
+          </nav>
+          <button class="reader-back-top" @click="backTop">
+            <AppIcon name="up" :size="16" />回到文章开头
+          </button>
+        </aside>
+        <article ref="reader" class="reader-paper" :style="readerStyle">
+          <img
+            v-if="articleCover(current)"
+            class="reader-cover"
+            :src="articleCover(current)"
+            :alt="current.title + ' · 主题插画'"
+            width="1536"
+            height="1024"
+            decoding="async"
+          />
+          <div class="markdown-body" v-html="rendered.html"></div>
+          <div class="article-ending">
+            <AppIcon name="leaf" :size="26" /><span>草木常在，慢慢读来。</span>
+          </div>
+          <button
+            v-if="adjacent"
+            class="next-article"
+            @click="openArticle(adjacent.slug)"
+          >
+            <span
+              ><small>继续阅读</small
+              ><strong>{{ adjacent.title }}</strong></span
+            ><AppIcon name="arrow" />
+          </button>
+        </article>
+      </div>
+    </template>
   </section>
 </template>
-
 <style scoped>
-.article-layout {
-  display: grid;
-  grid-template-columns: 28% 1fr;
-  gap: 12px;
-  min-height: 640px;
-}
-
-.article-list {
-  padding: 14px;
-  display: grid;
-  align-content: start;
-  gap: 8px;
-}
-
-.article-item {
-  width: 100%;
-  min-height: 40px;
-  text-align: left;
-}
-
-.article-content {
-  padding: 22px;
-}
-
-.reader-toolbar {
+.article-filters {
   display: flex;
+  justify-content: space-between;
   align-items: center;
+  gap: 20px;
+  padding: 8px 0 24px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 26px;
+}
+.article-filters > div {
+  display: flex;
   gap: 8px;
-  margin-bottom: 14px;
-  color: #2f6258;
+}
+.article-filters .search-field {
+  width: 260px;
+}
+.article-filters input {
+  font-size: 12px;
+}
+
+.articles-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  align-items: stretch;
+}
+.article-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: 0 4px 0 #e2e9e1;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.25s,
+    translate 0.25s;
+}
+.article-card:hover {
+  border-color: #8eaf99;
+  box-shadow: 0 9px 0 #d8e5db;
+  translate: 0 -5px;
+}
+.article-cover {
+  aspect-ratio: 3 / 2;
+  position: relative;
+  overflow: hidden;
+  background: #e9f0ea;
+  flex-shrink: 0;
+}
+.article-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s;
+}
+.article-card:hover img {
+  transform: scale(1.045);
+}
+.text-cover {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  color: var(--primary);
+}
+.text-cover > span:not(.article-number) {
+  font: 28px var(--display);
+}
+.text-cover small {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+}
+.article-number {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  font:
+    italic 13px Georgia,
+    serif;
+  color: white;
+  background: #254d3ae8;
+  border: 1px solid #ffffff60;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+}
+.article-copy {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 24px;
+}
+.article-copy .eyebrow {
+  font-size: 10px;
+}
+.article-copy h2 {
+  font-size: 21px;
+  line-height: 1.55;
+  letter-spacing: 0;
+  margin: 12px 0;
+}
+.article-summary {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.85;
+  margin: 0 0 22px;
+}
+.article-open {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 15px;
+  margin-top: auto;
+}
+.article-open svg {
+  transition: translate 0.2s;
+}
+.article-card:hover .article-open svg {
+  translate: 4px 0;
+}
+.article-card.featured {
+  grid-column: span 2;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  background: #244d39;
+  color: white;
+  border-color: #244d39;
+}
+.featured .article-cover {
+  height: 100%;
+  aspect-ratio: auto;
+}
+.featured .article-copy {
+  justify-content: center;
+  padding: clamp(22px, 2.6vw, 40px);
+}
+.featured .eyebrow {
+  color: #bddbc7;
+}
+.featured h2 {
+  font-size: clamp(24px, 2.4vw, 34px);
+  line-height: 1.5;
+  margin: 18px 0;
+}
+.featured .article-summary {
+  color: #d1e0d6;
   font-size: 14px;
 }
-
-.tool-btn {
-  min-width: 58px;
-  height: 32px;
-  padding: 0 12px;
+.featured .article-open {
+  border-color: #ffffff33;
+  margin-top: 18px;
 }
-
+.reader-cover {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2.4;
+  object-fit: cover;
+  border-radius: 14px;
+  margin-bottom: 34px;
+}
+.reading-progress {
+  position: fixed;
+  top: 98px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #ba7799;
+  z-index: 1001;
+  transform-origin: left;
+}
+.reader-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 2px 0 26px;
+}
+.reading-percent {
+  font-size: 10px;
+  color: var(--muted);
+}
+.reader-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 36px;
+  align-items: start;
+}
+.reader-aside {
+  position: sticky;
+  top: 115px;
+  max-height: calc(100dvh - 140px);
+  overflow: auto;
+}
+.reader-settings {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 18px;
+  background: var(--surface);
+}
+.reader-settings summary {
+  cursor: pointer;
+  font-size: 13px;
+}
+.reader-settings label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  margin: 20px 0 0;
+  color: var(--muted);
+}
+.reader-settings input {
+  width: 100%;
+  min-height: 28px;
+  padding: 0;
+  accent-color: var(--primary);
+  margin: 5px 0 0;
+}
+.reader-settings button {
+  min-height: 34px;
+  font-size: 10px;
+  padding: 5px 12px;
+  margin-top: 12px;
+}
+.article-toc {
+  margin: 25px 0;
+}
+.article-toc h3 {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.article-toc button {
+  background: transparent;
+  border: 0;
+  display: block;
+  text-align: left;
+  width: 100%;
+  font-size: 11px;
+  padding: 7px 0;
+  min-height: 34px;
+}
+.article-toc button:hover {
+  text-decoration: underline;
+}
+.reader-back-top {
+  border: 0;
+  background: transparent;
+  padding: 10px 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.reader-paper {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 44px 52px;
+  border-radius: 22px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .markdown-body {
-  color: #244f47;
-  line-height: 1.85;
+  font-size: var(--article-font-size);
+  line-height: var(--article-line-height);
+  color: #354434;
 }
-
+.markdown-body :deep(h1) {
+  font-size: clamp(25px, 2.4vw, 35px);
+  letter-spacing: 0.03em;
+  line-height: 1.6;
+  margin: 0 0 32px;
+}
+.markdown-body :deep(h2) {
+  font-size: 1.35em;
+  margin: 32px 0 18px;
+}
+.markdown-body :deep(h3) {
+  font-size: 1.15em;
+  margin: 28px 0 15px;
+}
 .markdown-body :deep(p),
 .markdown-body :deep(li),
-.markdown-body :deep(blockquote),
-.markdown-body :deep(td),
-.markdown-body :deep(th),
 .markdown-body :deep(span),
-.markdown-body :deep(div) {
-  font-size: var(--article-font-size, 22px) !important;
-  line-height: var(--article-line-height, 1.9);
+.markdown-body :deep(section) {
+  font-size: inherit;
+  line-height: inherit;
 }
-
+.markdown-body :deep(p) {
+  margin: 0 0 1.15em;
+}
 .markdown-body :deep(img) {
-  display: block;
-  float: none !important;
-  clear: both;
-  position: static !important;
-  max-width: min(var(--article-image-max, 560px), 100%);
-  border-radius: 12px;
-  margin: 14px 0;
-}
-
-.markdown-body :deep(h1) {
-  font-size: 34px !important;
-  margin-top: 18px;
-}
-
-.markdown-body :deep(h2) {
-  font-size: 30px !important;
-  margin-top: 18px;
-}
-
-.markdown-body :deep(h3) {
-  font-size: 26px !important;
-  margin-top: 18px;
-}
-
-.markdown-body :deep(table),
-.markdown-body :deep(thead),
-.markdown-body :deep(tbody),
-.markdown-body :deep(tr),
-.markdown-body :deep(th),
-.markdown-body :deep(td) {
-  display: revert;
   width: auto;
+  max-width: min(100%, var(--article-image-max));
+  height: auto;
+  display: block;
+  margin: 22px auto;
+  border-radius: 5px;
 }
-
+.markdown-body :deep(a) {
+  color: #386c4b;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.markdown-body :deep(blockquote) {
+  border-left: 3px solid #b5c49c;
+  margin: 22px 0;
+  padding: 12px 22px;
+  background: #eff2e7;
+}
+.markdown-body :deep(.article-table) {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 20px 0;
+}
 .markdown-body :deep(table) {
-  width: 100%;
-  max-width: 980px;
   border-collapse: collapse;
-  margin: 10px 0 22px;
-  table-layout: auto;
-  background: rgba(255, 255, 255, 0.45);
-  border-radius: 10px;
+  width: 100%;
+  font-size: 0.9em;
 }
-
-.markdown-body :deep(thead) {
-  display: table-header-group;
-}
-
-.markdown-body :deep(tr) {
-  display: table-row;
-}
-
 .markdown-body :deep(td),
 .markdown-body :deep(th) {
-  position: static !important;
-  padding: 4px 10px;
-  border-bottom: 1px solid rgba(132, 183, 168, 0.2);
-  white-space: normal;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  min-width: 110px;
+  text-align: left;
   vertical-align: top;
-  line-height: 1.35 !important;
-  font-size: 20px !important;
 }
-
-.markdown-body :deep(td:first-child),
-.markdown-body :deep(th:first-child) {
-  width: 220px;
-  min-width: 180px;
-  font-weight: 700;
-  color: #1caea0;
-  white-space: nowrap;
+.markdown-body :deep(th) {
+  background: var(--soft);
 }
-
-.markdown-body :deep(td + td),
-.markdown-body :deep(th + th) {
-  min-width: 320px;
-  color: #a8a8a8;
-  font-style: italic;
+.markdown-body :deep(td p) {
+  margin: 0;
 }
-
-.markdown-body :deep(td *),
-.markdown-body :deep(th *) {
-  position: static !important;
-  float: none !important;
-  left: auto !important;
-  top: auto !important;
-  line-height: 1.35 !important;
-  margin: 0 !important;
+.markdown-body :deep(hr) {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 28px 0;
 }
-
-.markdown-body :deep(.latin-var) {
-  font-style: normal !important;
+.markdown-body :deep(pre) {
+  overflow-x: auto;
+  padding: 18px;
+  background: var(--soft);
 }
-
-.markdown-body :deep(.no-italic-quote) {
-  font-style: normal !important;
+.markdown-body :deep(h1),
+.markdown-body :deep(h2),
+.markdown-body :deep(h3) {
+  scroll-margin-top: 115px;
 }
-
-.markdown-body :deep(*) {
-  max-width: 100%;
+.article-ending {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  margin: 48px 0;
+  color: #7990ac;
+  font: 14px var(--display);
 }
-
-@media (max-width: 980px) {
-  .article-layout {
-    grid-template-columns: 1fr;
-    min-height: 0;
+.next-article {
+  width: 100%;
+  justify-content: space-between;
+  text-align: left;
+  padding: 22px;
+  background: #edf3ed;
+}
+.next-article small {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.next-article strong {
+  font: 18px/1.5 var(--display);
+}
+.reader-loading {
+  height: 600px;
+}
+@media (max-width: 1000px) {
+  .articles-grid {
+    gap: 20px;
   }
-
-  .article-list {
-    max-height: 280px;
-    overflow-y: auto;
+  .article-copy {
+    padding: 18px;
   }
-
-  .article-content {
+  .reader-layout {
+    grid-template-columns: 190px minmax(0, 1fr);
+    gap: 24px;
+  }
+  .reader-paper {
+    padding: 30px;
+  }
+}
+@media (max-width: 900px) {
+  .reading-progress {
+    top: 83px;
+  }
+  .articles-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .article-card.featured {
+    min-height: 340px;
+  }
+}
+@media (max-width: 700px) {
+  .reader-layout {
+    display: block;
+  }
+  .reader-aside {
+    position: static;
+    max-height: none;
+    margin-bottom: 20px;
+  }
+  .article-toc,
+  .reader-back-top {
+    display: none;
+  }
+  .reader-settings {
     padding: 14px;
   }
-
-  .reader-toolbar {
-    flex-wrap: wrap;
+  .reader-settings label {
+    display: inline-flex;
+    width: 30%;
+    margin: 15px 1% 0;
+    font-size: 10px;
+  }
+  .reader-settings button {
+    margin: 10px 0 0 2%;
+  }
+  .reader-paper {
+    padding: 24px 19px;
+  }
+  .article-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .article-filters .search-field {
+    width: 100%;
   }
 }
-
-@media (max-width: 640px) {
-  .reader-toolbar {
-    gap: 6px;
+@media (max-width: 600px) {
+  .reading-progress {
+    top: 77px;
   }
-
-  .tool-btn {
-    min-width: 52px;
-    height: 30px;
-    padding: 0 10px;
-    font-size: 12px;
+  .articles-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
   }
-
-  .markdown-body :deep(h1) {
-    font-size: 28px !important;
+  .article-card.featured {
+    display: flex;
+    grid-column: auto;
+    min-height: 0;
   }
-
-  .markdown-body :deep(h2) {
-    font-size: 24px !important;
+  .featured .article-cover {
+    height: auto;
+    aspect-ratio: 3 / 2;
   }
-
-  .markdown-body :deep(h3) {
-    font-size: 20px !important;
+  .featured .article-copy {
+    padding: 24px;
   }
-
-  .markdown-body :deep(td),
-  .markdown-body :deep(th) {
-    padding: 4px 6px;
-    font-size: 16px !important;
+  .featured h2 {
+    font-size: 27px;
+  }
+  .featured .article-open {
+    margin-top: 0;
+  }
+  .article-filters {
+    gap: 14px;
+    padding-bottom: 18px;
+    margin-bottom: 20px;
+  }
+  .reader-cover {
+    aspect-ratio: 3 / 2;
+    margin-bottom: 26px;
+  }
+  .article-copy h2 {
+    min-height: 0;
+    font-size: 22px;
+  }
+  .article-copy {
+    padding: 22px;
+  }
+  .reader-topbar > .eyebrow {
+    display: none;
+  }
+  .next-article {
+    padding: 16px;
   }
 }
 </style>

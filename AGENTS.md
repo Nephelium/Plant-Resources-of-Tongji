@@ -1,0 +1,10 @@
+# 素不莳花前端
+
+- Vue 3 + TypeScript + Vite，业务页面位于 `src/views`，公共组件位于 `src/components`，API 适配在 `src/api.ts`。
+- `public/legacy` 为原站照片和调查数据，`public/articles` 为文章原文与配图。保持数据、原文、署名不变。
+- 本轮界面采用叶绿、深绿、瓷白，少量花瓣粉，参考 PhoneticToolbox 的圆润导航与立体卡片，不使用黄色主题色，地图默认深色。首页装饰使用 `public/illustrations` 的透明插画，植物档案使用真实照片。全站兼容窄屏、键盘和减少动画偏好。
+- 同时支持静态 Hash 路由及动态 History 路由。所有资源通过 `ASSET_BASE`，内部导航通过 Vue Router，兼容子目录部署。
+- 验证命令：`npm run build:static`、`npm run build:dynamic`。运行静态预览：`npm run dev -- --mode static --host 127.0.0.1`。
+- `output/playwright` 存放浏览器验证和 README 实拍截图，`docs` 存放设计与验证记录。
+- 交互改动需实际浏览器验证。地图实例、定时器和事件监听在卸载时清理。
+- 不修改 `.env`、密钥和发布工作流，不自动提交、推送或部署。旧 PHP 目录与 backend 不在此次前端改版范围。

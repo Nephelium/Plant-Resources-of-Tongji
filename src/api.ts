@@ -14,9 +14,23 @@ import type {
   TimelineItem,
 } from "./types";
 import { ASSET_BASE, STATIC_MODE } from "./env";
+import { plantImage } from "./utils/plants";
+import { readPreference, writePreference } from "./utils/storage";
 
-const RAW_API_BASE = (import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_BASE ?? "http://localhost:3000/api").trim();
-const API_BASE = RAW_API_BASE.endsWith("/") ? RAW_API_BASE.slice(0, -1) : RAW_API_BASE;
+async function readAsset(url: string): Promise<Response> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`资源加载失败: ${response.status}`);
+  return response;
+}
+
+const RAW_API_BASE = (
+  import.meta.env.VITE_API_BASE_URL ??
+  import.meta.env.VITE_API_BASE ??
+  "http://localhost:3000/api"
+).trim();
+const API_BASE = RAW_API_BASE.endsWith("/")
+  ? RAW_API_BASE.slice(0, -1)
+  : RAW_API_BASE;
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${url}`, {
@@ -49,25 +63,45 @@ const staticTimeline: TimelineItem[] = [
   { time: "2017", content: "东门，紫罗兰→朱唇。" },
   { time: "2017", content: "东门，香彩雀→紫罗兰。" },
   { time: "2017", content: "东南区，引入：变叶木、碧冬茄、天竺葵。" },
-  { time: "2017.05.01", content: "人工湿地，引入：直立冬青、花叶杞柳、美女樱、毛地黄、天人菊。" },
-  { time: "2017.05.01", content: "南门，引入：金叶金钱蒲、蓝羊茅、中华蚊母树、玉簪、水果蓝。" },
+  {
+    time: "2017.05.01",
+    content: "人工湿地，引入：直立冬青、花叶杞柳、美女樱、毛地黄、天人菊。",
+  },
+  {
+    time: "2017.05.01",
+    content: "南门，引入：金叶金钱蒲、蓝羊茅、中华蚊母树、玉簪、水果蓝。",
+  },
 ];
 
 let legacyPointsCache: FeatureCollection | null = null;
+let legacyPointsRequest: Promise<FeatureCollection> | null = null;
+let plantsCache: PlantInfo[] | null = null;
 
 const loadLegacyPoints = async (): Promise<FeatureCollection> => {
   if (legacyPointsCache) {
     return legacyPointsCache;
   }
-  const text = await fetch(`${ASSET_BASE}legacy/data/ligneous_plants.geojson.js`).then((r) => r.text());
-  const jsonText = text
-    .replace(/^\uFEFF/, "")
-    .replace(/^\s*var\s+\w+\s*=\s*/i, "")
-    .replace(/;\s*$/, "")
-    .trim();
-  const parsed = JSON.parse(jsonText) as FeatureCollection;
-  legacyPointsCache = parsed;
-  return parsed;
+  if (legacyPointsRequest) return legacyPointsRequest;
+  legacyPointsRequest = (async () => {
+    const text = await readAsset(
+      `${ASSET_BASE}legacy/data/ligneous_plants.geojson.js`,
+    ).then((r) => r.text());
+    const jsonText = text
+      .replace(/^\uFEFF/, "")
+      .replace(/^\s*var\s+\w+\s*=\s*/i, "")
+      .replace(/;\s*$/, "")
+      .trim();
+    const parsed = JSON.parse(jsonText) as FeatureCollection;
+    if (parsed.type !== "FeatureCollection" || !Array.isArray(parsed.features))
+      throw new Error("植物地图数据格式有误");
+    legacyPointsCache = parsed;
+    return parsed;
+  })();
+  try {
+    return await legacyPointsRequest;
+  } finally {
+    legacyPointsRequest = null;
+  }
 };
 
 const buildTaxonTreeFromPoints = (points: FeatureCollection): TaxonNode[] => {
@@ -76,6 +110,7 @@ const buildTaxonTreeFromPoints = (points: FeatureCollection): TaxonNode[] => {
     const family = (feature.properties.category || "未知科").trim();
     const genus = (feature.properties.family || "未知属").trim();
     const species = (feature.properties.chinese_name || "").trim();
+    if (!species) continue;
     if (!familyMap.has(family)) {
       familyMap.set(family, new Map());
     }
@@ -101,15 +136,17 @@ const buildTaxonTreeFromPoints = (points: FeatureCollection): TaxonNode[] => {
 };
 
 const buildPlantsFromPoints = (points: FeatureCollection): PlantInfo[] => {
+  if (plantsCache) return plantsCache;
   const groups = new Map<string, LegacyPlantFeature[]>();
   for (const feature of points.features) {
     const key = feature.properties.chinese_name;
+    if (!key.trim()) continue;
     if (!groups.has(key)) {
       groups.set(key, []);
     }
     groups.get(key)!.push(feature);
   }
-  return [...groups.entries()]
+  plantsCache = [...groups.entries()]
     .map(([chinese_name, list]) => {
       const first = list[0];
       return {
@@ -121,22 +158,21 @@ const buildPlantsFromPoints = (points: FeatureCollection): PlantInfo[] => {
         flower_period: first.properties.flower_period,
         fruit_period: first.properties.fruit_period,
         color: first.properties.color,
-        imageUrl: `${ASSET_BASE}legacy/images/plants/${encodeURIComponent(chinese_name)}.jpg`,
+        imageUrl: plantImage(chinese_name),
         points: list,
       } as PlantInfo;
     })
     .sort((a, b) => a.chinese_name.localeCompare(b.chinese_name, "zh-CN"));
+  return plantsCache;
 };
 
-const readStaticVisits = () => Number(localStorage.getItem("tongjiplants_static_visits") ?? "0");
-const writeStaticVisits = (count: number) => localStorage.setItem("tongjiplants_static_visits", String(count));
+const readStaticVisits = () =>
+  Number(readPreference("tongjiplants_static_visits", "0")) || 0;
+const writeStaticVisits = (count: number) =>
+  writePreference("tongjiplants_static_visits", String(count));
 
 const getStaticArticles = async (): Promise<ArticleSummary[]> => {
-  try {
-    return await fetch(`${ASSET_BASE}articles/index.json`).then((r) => r.json());
-  } catch {
-    return [];
-  }
+  return readAsset(`${ASSET_BASE}articles/index.json`).then((r) => r.json());
 };
 
 const toStaticUrl = (rawPath: string) => {
@@ -160,8 +196,11 @@ export const api = {
     if (STATIC_MODE) {
       const articles = await getStaticArticles();
       const hit = articles.find((item) => item.slug === slug);
-      const markdownPath = toStaticUrl(hit?.markdownPath || `articles/${encodeURIComponent(slug)}/index.md`);
-      const markdown = await fetch(markdownPath).then((r) => r.text());
+      if (!hit) throw new Error("文章不存在");
+      const markdownPath = toStaticUrl(
+        hit?.markdownPath || `articles/${encodeURIComponent(slug)}/index.md`,
+      );
+      const markdown = await readAsset(markdownPath).then((r) => r.text());
       return {
         slug,
         title: hit?.title ?? slug,
@@ -212,7 +251,13 @@ export const api = {
     if (STATIC_MODE) {
       return {
         ok: true,
-        checks: [{ key: "static-mode", pass: true, message: "静态展示模式：未启用后端地图服务" }],
+        checks: [
+          {
+            key: "static-mode",
+            pass: true,
+            message: "静态展示模式：未启用后端地图服务",
+          },
+        ],
       } satisfies BaiduHealth;
     }
     return request<BaiduHealth>("/map/baidu-health");
@@ -237,10 +282,12 @@ export const api = {
           item.chinese_name.toLowerCase().includes(kw) ||
           item.scientific_name.toLowerCase().includes(kw) ||
           item.family.toLowerCase().includes(kw) ||
-          item.category.toLowerCase().includes(kw)
+          item.category.toLowerCase().includes(kw),
       );
     }
-    return request<PlantInfo[]>(`/plants?keyword=${encodeURIComponent(keyword)}`);
+    return request<PlantInfo[]>(
+      `/plants?keyword=${encodeURIComponent(keyword)}`,
+    );
   },
   getPlant: async (name: string) => {
     if (STATIC_MODE) {
@@ -250,7 +297,19 @@ export const api = {
       if (!hit) {
         throw new Error("请求失败: 404");
       }
-      return hit;
+      return {
+        ...hit,
+        related: plants
+          .filter(
+            (item) =>
+              item.category === hit.category && item.chinese_name !== name,
+          )
+          .slice(0, 6)
+          .map((item) => ({
+            chinese_name: item.chinese_name,
+            scientific_name: item.scientific_name,
+          })),
+      };
     }
     return request<PlantInfo>(`/plants/${encodeURIComponent(name)}`);
   },
@@ -273,7 +332,10 @@ export const api = {
     return request<BbsPost[]>("/bbs/posts");
   },
   adminLogin: (payload: { username: string; password: string }) =>
-    request<{ token: string }>("/admin/login", { method: "POST", body: JSON.stringify(payload) }),
+    request<{ token: string }>("/admin/login", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   createPost: (payload: {
     author: string;
     email: string;
@@ -281,14 +343,24 @@ export const api = {
     title: string;
     content: string;
   }) =>
-    request<BbsPost>("/bbs/posts", { method: "POST", body: JSON.stringify(payload) }),
+    request<BbsPost>("/bbs/posts", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   createReply: (postId: number, payload: { author: string; content: string }) =>
-    request(`/bbs/posts/${postId}/replies`, { method: "POST", body: JSON.stringify(payload) }),
+    request(`/bbs/posts/${postId}/replies`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   getAdminSummary: (token: string) =>
     request<AdminSummary>(`/admin/summary?token=${encodeURIComponent(token)}`),
   getAdminPosts: (token: string) =>
     request<BbsPost[]>(`/admin/bbs/posts?token=${encodeURIComponent(token)}`),
-  updateAdminPost: (token: string, postId: number, action: "hide" | "show" | "delete" | "approve" | "reject") =>
+  updateAdminPost: (
+    token: string,
+    postId: number,
+    action: "hide" | "show" | "delete" | "approve" | "reject",
+  ) =>
     request(`/admin/bbs/posts/${postId}?token=${encodeURIComponent(token)}`, {
       method: "PATCH",
       body: JSON.stringify({ action }),
@@ -304,8 +376,11 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   importWechatArticle: (token: string, url: string) =>
-    request<ArticleSummary>(`/admin/articles/import?token=${encodeURIComponent(token)}`, {
-      method: "POST",
-      body: JSON.stringify({ url }),
-    }),
+    request<ArticleSummary>(
+      `/admin/articles/import?token=${encodeURIComponent(token)}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ url }),
+      },
+    ),
 };

@@ -1,389 +1,438 @@
 <script setup lang="ts">
-import L from "leaflet";
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { api } from "../api";
 import type { PlantInfo, TaxonNode } from "../types";
-
-const tree = ref<TaxonNode[]>([]);
-const current = ref<PlantInfo | null>(null);
-const imageUrl = ref("");
-const mapEl = ref<HTMLElement | null>(null);
-const detailPanelEl = ref<HTMLElement | null>(null);
-const detailMap = ref<L.Map | null>(null);
-const pointLayer = ref<L.Layer | null>(null);
-const viewLevel = ref<"family" | "genus" | "species">("species");
-const expandedFamilies = ref<Set<string>>(new Set());
-const expandedGenera = ref<Set<string>>(new Set());
-const TONGJI_BOUNDS: L.LatLngBoundsExpression = [
-  [31.2806, 121.4912],
-  [31.2892, 121.5038],
-];
-
-const treeView = computed(() =>
-  tree.value
-    .map((family) => ({
-      ...family,
-      genera: family.genera
-        .map((genus) => ({
-          ...genus,
-          species: genus.species.filter((name) => name && name.trim().length > 0),
+import AppIcon from "../components/AppIcon.vue";
+import PageHeading from "../components/PageHeading.vue";
+import PlantProfile from "../components/PlantProfile.vue";
+const route = useRoute(),
+  router = useRouter();
+const tree = ref<TaxonNode[]>([]),
+  current = ref<PlantInfo | null>(null);
+const loading = ref(true),
+  plantLoading = ref(false),
+  error = ref(""),
+  plantError = ref("");
+const keyword = ref(""),
+  level = ref("family");
+const openFamilies = ref(new Set<string>()),
+  openGenera = ref(new Set<string>());
+const detailPanel = ref<HTMLElement>();
+let requestId = 0;
+const key = (family: string, genus: string) => family + "::" + genus;
+const filtered = computed(() => {
+  const q = keyword.value.trim().toLowerCase();
+  return tree.value
+    .map((f) => ({
+      ...f,
+      genera: f.genera
+        .map((g) => ({
+          ...g,
+          species: g.species.filter(
+            (s) =>
+              s.trim() &&
+              (!q ||
+                f.familyName.toLowerCase().includes(q) ||
+                g.genusName.toLowerCase().includes(q) ||
+                s.toLowerCase().includes(q)),
+          ),
         }))
-        .filter((genus) => genus.species.length > 0),
+        .filter((g) => g.species.length),
     }))
-    .filter((family) => family.genera.length > 0)
-);
-
-const hasPlantPoints = computed(() => Boolean(current.value?.points?.length));
-
-const genusKey = (familyName: string, genusName: string) => `${familyName}::${genusName}`;
-
-const isFamilyOpen = (familyName: string) => expandedFamilies.value.has(familyName);
-
-const isGenusOpen = (familyName: string, genusName: string) => expandedGenera.value.has(genusKey(familyName, genusName));
-
-const toggleFamily = (familyName: string) => {
-  const next = new Set(expandedFamilies.value);
-  if (next.has(familyName)) {
-    next.delete(familyName);
-  } else {
-    next.add(familyName);
-  }
-  expandedFamilies.value = next;
-};
-
-const toggleGenus = (familyName: string, genusName: string) => {
-  const key = genusKey(familyName, genusName);
-  const next = new Set(expandedGenera.value);
-  if (next.has(key)) {
-    next.delete(key);
-  } else {
-    next.add(key);
-  }
-  expandedGenera.value = next;
-};
-
-const resetExpandedState = () => {
-  if (viewLevel.value === "species") {
-    expandedFamilies.value = new Set(tree.value.map((item) => item.familyName));
-    expandedGenera.value = new Set(
-      tree.value.flatMap((family) => family.genera.map((genus) => genusKey(family.familyName, genus.genusName)))
-    );
-    return;
-  }
-  if (viewLevel.value === "genus") {
-    expandedFamilies.value = new Set(tree.value.map((item) => item.familyName));
-    expandedGenera.value = new Set();
-    return;
-  }
-  expandedFamilies.value = new Set();
-  expandedGenera.value = new Set();
-};
-
-const renderPlantMap = async () => {
-  if (!hasPlantPoints.value) {
-    return;
-  }
-  await nextTick();
-  if (!mapEl.value || !current.value?.points?.length) {
-    return;
-  }
-  if (!detailMap.value) {
-    detailMap.value = L.map(mapEl.value, {
-      center: [31.284975584, 121.497655876],
-      zoom: 17,
-    });
-    const tile = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-      subdomains: "abcd",
-      maxZoom: 22,
-      attribution: "© OpenStreetMap © CARTO",
-    });
-    detailMap.value.addLayer(tile);
-  }
-  if (pointLayer.value) {
-    pointLayer.value.remove();
-  }
-  const layer = L.layerGroup();
-  for (const item of current.value.points) {
-    const [lng, lat] = item.geometry.coordinates;
-    const marker = L.circleMarker([lat, lng], {
-      radius: 5,
-      color: item.properties.color || "#e49f5f",
-      weight: 1,
-      fillOpacity: 0.9,
-    });
-    layer.addLayer(marker);
-  }
-  pointLayer.value = layer;
-  detailMap.value.addLayer(layer);
-  detailMap.value.fitBounds(TONGJI_BOUNDS, { padding: [20, 20] });
-};
-
-const loadPlant = async (name: string) => {
-  current.value = await api.getPlant(name);
-  imageUrl.value = current.value.imageUrl || current.value.imageCandidates?.[0] || "";
-  await renderPlantMap();
-  if (window.innerWidth <= 980 && detailPanelEl.value) {
-    detailPanelEl.value.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-};
-
-onMounted(async () => {
-  if (window.innerWidth <= 640) {
-    viewLevel.value = "family";
-  }
-  tree.value = await api.getTaxonTree();
-  resetExpandedState();
+    .filter((f) => f.genera.length);
 });
-
-watch(viewLevel, resetExpandedState);
+const speciesCount = computed(() =>
+  tree.value.reduce(
+    (n, f) => n + f.genera.reduce((a, g) => a + g.species.length, 0),
+    0,
+  ),
+);
+function toggle(set: Set<string>, value: string) {
+  if (set.has(value)) set.delete(value);
+  else set.add(value);
+}
+function resetOpen() {
+  openFamilies.value = new Set(
+    level.value === "family" ? [] : tree.value.map((f) => f.familyName),
+  );
+  openGenera.value = new Set(
+    level.value === "species"
+      ? tree.value.flatMap((f) =>
+          f.genera.map((g) => key(f.familyName, g.genusName)),
+        )
+      : [],
+  );
+}
+async function loadPlant(name: string, scroll = false) {
+  const id = ++requestId;
+  plantLoading.value = true;
+  plantError.value = "";
+  current.value = null;
+  try {
+    const value = await api.getPlant(name);
+    if (id === requestId) current.value = value;
+  } catch {
+    if (id === requestId) plantError.value = "这份植物档案暂时没有加载成功。";
+  } finally {
+    if (id === requestId) {
+      plantLoading.value = false;
+      if (scroll && window.innerWidth <= 850)
+        detailPanel.value?.scrollIntoView({ block: "start" });
+    }
+  }
+}
+function choose(name: string) {
+  void router.push({ query: { plant: name } });
+}
+async function loadTree() {
+  loading.value = true;
+  error.value = "";
+  try {
+    tree.value = await api.getTaxonTree();
+    resetOpen();
+  } catch {
+    error.value = "分类目录暂时没有加载成功。";
+  } finally {
+    loading.value = false;
+  }
+}
+watch(level, resetOpen);
+watch(
+  () => route.query.plant,
+  (name) => {
+    if (name) void loadPlant(String(name), true);
+    else {
+      requestId++;
+      current.value = null;
+      plantError.value = "";
+      plantLoading.value = false;
+    }
+  },
+);
+onMounted(async () => {
+  await loadTree();
+  if (route.query.plant) await loadPlant(String(route.query.plant));
+});
+onBeforeUnmount(() => {
+  requestId++;
+});
 </script>
-
 <template>
-  <section class="taxon-layout">
-    <aside class="section-panel tree-panel">
-      <div class="tree-toolbar">
-        <span>显示层级</span>
-        <select v-model="viewLevel">
-          <option value="family">科</option>
-          <option value="genus">属</option>
-          <option value="species">种</option>
-        </select>
-      </div>
-      <div v-for="family in treeView" :key="family.familyName" class="family-block">
-        <button class="family-summary" @click="toggleFamily(family.familyName)">
-          {{ isFamilyOpen(family.familyName) ? "▼" : "▶" }} {{ family.familyName }}
-        </button>
-        <div v-if="isFamilyOpen(family.familyName)">
-          <div v-for="genus in family.genera" :key="genus.genusName" class="genus-block">
-            <button class="genus-summary" @click="toggleGenus(family.familyName, genus.genusName)">
-              {{ isGenusOpen(family.familyName, genus.genusName) ? "▼" : "▶" }}
-              {{ genus.genusName }}
+  <section>
+    <PageHeading
+      eyebrow="A FAMILY OF PLANTS / 草木谱系"
+      title="循着科属，认识草木"
+      description="从科到属，再到每一种植物。沿着分类的枝条，发现它们的联系。"
+      ><span class="badge"
+        >{{ tree.length }} 科 · {{ speciesCount }} 种</span
+      ></PageHeading
+    >
+    <div class="taxon-layout">
+      <aside class="section-panel tree-panel">
+        <label class="search-field"
+          ><AppIcon name="search" :size="17" /><input
+            v-model="keyword"
+            aria-label="筛选分类目录"
+            placeholder="查找科、属或植物" /><button
+            v-if="keyword"
+            aria-label="清空分类筛选"
+            class="icon-button"
+            @click="keyword = ''"
+          >
+            <AppIcon name="close" :size="14" /></button></label
+        ><label class="tree-toolbar"
+          >展开到<select v-model="level">
+            <option value="family">科</option>
+            <option value="genus">属</option>
+            <option value="species">种</option>
+          </select></label
+        >
+        <div v-if="loading" class="empty-state" role="status">
+          正在展开分类目录…
+        </div>
+        <div v-else-if="error" class="error-state" role="alert">
+          {{ error }}<button @click="loadTree">重新加载</button>
+        </div>
+        <p v-else-if="!filtered.length" class="empty-state">
+          没有匹配的分类或植物，试试其他名称。
+        </p>
+        <div v-else class="taxonomy-tree">
+          <div v-for="f in filtered" :key="f.familyName" class="family-block">
+            <button
+              class="family-summary"
+              :aria-expanded="
+                Boolean(keyword) || openFamilies.has(f.familyName)
+              "
+              @click="toggle(openFamilies, f.familyName)"
+            >
+              <AppIcon
+                name="chevron"
+                :size="13"
+                :class="{ rotated: keyword || openFamilies.has(f.familyName) }"
+              /><strong>{{ f.familyName }}</strong
+              ><span>{{
+                f.genera.reduce((n, g) => n + g.species.length, 0)
+              }}</span>
             </button>
-            <template v-if="isGenusOpen(family.familyName, genus.genusName)">
-              <button v-for="species in genus.species" :key="species" class="species-btn" @click="loadPlant(species)">
-                {{ species }}
-              </button>
-            </template>
+            <div
+              v-if="keyword || openFamilies.has(f.familyName)"
+              class="genera"
+            >
+              <div v-for="g in f.genera" :key="g.genusName">
+                <button
+                  class="genus-summary"
+                  :aria-expanded="
+                    Boolean(keyword) ||
+                    openGenera.has(key(f.familyName, g.genusName))
+                  "
+                  @click="toggle(openGenera, key(f.familyName, g.genusName))"
+                >
+                  <AppIcon
+                    name="chevron"
+                    :size="11"
+                    :class="{
+                      rotated:
+                        keyword ||
+                        openGenera.has(key(f.familyName, g.genusName)),
+                    }"
+                  />{{ g.genusName }}
+                </button>
+                <div
+                  v-if="
+                    keyword || openGenera.has(key(f.familyName, g.genusName))
+                  "
+                  class="species"
+                >
+                  <button
+                    v-for="name in g.species"
+                    :key="name"
+                    :class="{ selected: route.query.plant === name }"
+                    :aria-pressed="route.query.plant === name"
+                    @click="choose(name)"
+                  >
+                    {{ name
+                    }}<AppIcon
+                      v-if="route.query.plant === name"
+                      name="leaf"
+                      :size="13"
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </aside>
-
-    <article ref="detailPanelEl" class="section-panel detail-panel">
-      <template v-if="current">
-        <h2>{{ current.scientific_name }} {{ current.chinese_name }}</h2>
-        <p>{{ current.category }} / {{ current.family }}</p>
-        <section v-if="hasPlantPoints" class="plant-map-wrap">
-          <h3>该植物分布点位</h3>
-          <div ref="mapEl" class="plant-map"></div>
-        </section>
-        <h3 class="photo-title">植物照片</h3>
-        <img v-if="imageUrl" :src="imageUrl" :alt="current.chinese_name" class="plant-image" />
-      </template>
-      <template v-else>
-        <h2>同济大学校园植物网——素不莳花</h2>
-        <p>请在左侧分类树中选择植物查看详情。</p>
-      </template>
-    </article>
+      </aside>
+      <article ref="detailPanel" class="section-panel taxon-detail">
+        <div
+          v-if="plantLoading"
+          class="skeleton"
+          role="status"
+          aria-label="正在加载所选植物"
+        ></div>
+        <div v-else-if="plantError" class="error-state" role="alert">
+          {{ plantError
+          }}<button @click="loadPlant(String(route.query.plant))">
+            重新加载
+          </button>
+        </div>
+        <PlantProfile v-else-if="current" :plant="current" compact />
+        <div v-else class="taxon-welcome">
+          <div class="welcome-leaf"><AppIcon name="leaf" :size="64" /></div>
+          <div class="eyebrow">EVERY LEAF HAS A NAME</div>
+          <h2>给熟悉的绿意，<br />一个准确的名字。</h2>
+          <p>在分类目录中选择一株植物，<br />查看它的科属、照片与校园分布。</p>
+          <div class="taxonomy-example">
+            <span>科</span><AppIcon name="arrow" :size="15" /><span>属</span
+            ><AppIcon name="arrow" :size="15" /><span>种</span>
+          </div>
+          <button class="button-primary" @click="choose('银杏')">
+            从银杏开始 <AppIcon name="arrow" :size="16" />
+          </button>
+        </div>
+      </article>
+    </div>
   </section>
 </template>
-
 <style scoped>
 .taxon-layout {
   display: grid;
-  grid-template-columns: 27% 1fr;
-  gap: 12px;
-  min-height: 620px;
-  height: 72vh;
-  align-items: stretch;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
 }
-
 .tree-panel {
-  padding: 12px;
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.detail-panel {
-  padding: 22px;
-  height: 100%;
-  overflow-y: auto;
-}
-
-.family-block,
-.genus-block {
-  margin-bottom: 6px;
-}
-
-.family-summary {
-  cursor: pointer;
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1.2;
-  color: #1f5a50;
+  position: sticky;
+  top: 110px;
+  padding: 18px;
+  max-height: calc(100dvh - 140px);
   display: flex;
-  align-items: center;
-  width: 100%;
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(132, 183, 168, 0.22);
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.78), rgba(240, 252, 248, 0.8));
-  box-shadow: 0 4px 12px rgba(41, 107, 95, 0.08);
+  flex-direction: column;
 }
-
-.family-summary:hover {
-  background: linear-gradient(120deg, rgba(225, 246, 239, 0.9), rgba(245, 255, 251, 0.92));
+.tree-panel input {
+  font-size: 12px;
 }
-
-.genus-summary {
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 700;
-  padding: 7px 16px;
-  color: #2a6d61;
-  display: inline-block;
-  margin-left: 18px;
-  border-radius: 10px;
-  border: 1px solid rgba(132, 183, 168, 0.35);
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.9), rgba(233, 248, 243, 0.92));
-  box-shadow: 0 4px 12px rgba(41, 107, 95, 0.12);
-}
-
-.genus-summary:hover {
-  background: linear-gradient(120deg, rgba(216, 241, 234, 0.88), rgba(248, 255, 252, 0.9));
-}
-
-.species-btn {
-  width: calc(100% - 62px);
-  margin-left: 42px;
-  display: block;
-  text-align: left;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(132, 183, 168, 0.22);
-  border-radius: 12px;
-  padding: 9px 20px;
-  font-size: 14px;
-  cursor: pointer;
-  color: #2d6e62;
-  margin-top: 6px;
-}
-
 .tree-toolbar {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
+  margin: 14px 0;
+  font-size: 11px;
+  color: var(--muted);
 }
-
 .tree-toolbar select {
-  height: 32px;
-  min-width: 160px;
+  min-height: 34px;
+  padding: 5px 10px;
+  width: 110px;
+  font-size: 12px;
 }
-
-.species-btn:hover {
-  background: linear-gradient(120deg, rgba(216, 241, 234, 0.85), rgba(248, 255, 252, 0.88));
+.taxonomy-tree {
+  overflow: auto;
+  min-height: 0;
 }
-
-.plant-image {
-  margin-top: 14px;
-  width: 75%;
-  max-width: 800px;
-  border-radius: 14px;
-  box-shadow: 0 12px 26px rgba(35, 88, 77, 0.22);
+.family-block {
+  border-bottom: 1px solid #e7eadf;
 }
-
-.plant-map-wrap {
-  margin-bottom: 16px;
+.family-summary {
+  display: flex;
+  width: 100%;
+  padding: 13px 5px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  border-radius: 4px;
+  gap: 9px;
 }
-
-.photo-title {
-  margin: 10px 0 6px;
-  font-size: 15px;
-  color: #275e54;
+.family-summary strong {
+  font-size: 13px;
+  font-weight: 500;
+  flex: 1;
 }
-
-.plant-map {
-  margin-top: 8px;
-  height: 320px;
-  width: 75%;
-  max-width: 800px;
-  border: 1px solid rgba(132, 183, 168, 0.35);
-  border-radius: 14px;
-  overflow: hidden;
+.family-summary > span {
+  font:
+    11px Georgia,
+    serif;
+  color: var(--muted);
 }
-
-@media (max-width: 980px) {
+.rotated {
+  transform: rotate(90deg);
+}
+.genera {
+  padding-left: 15px;
+  border-left: 1px solid var(--line);
+  margin: 0 0 10px 11px;
+}
+.genus-summary {
+  border: 0;
+  background: transparent;
+  padding: 8px 0;
+  min-height: 36px;
+  font-size: 11px;
+  gap: 7px;
+}
+.species {
+  padding: 0 0 6px 18px;
+}
+.species button {
+  display: flex;
+  width: 100%;
+  text-align: left;
+  justify-content: space-between;
+  padding: 8px 10px;
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+}
+.species button.selected {
+  background: var(--soft);
+  color: var(--primary);
+  font-weight: 700;
+}
+.family-summary:hover,
+.genus-summary:hover,
+.species button:hover {
+  background: #eaf3ec;
+}
+.taxon-detail {
+  padding: 32px;
+  min-height: 610px;
+  scroll-margin-top: 100px;
+}
+.taxon-welcome {
+  min-height: 545px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  background: radial-gradient(ellipse at center, #e1eee4cc, transparent 70%);
+}
+.welcome-leaf {
+  width: 115px;
+  height: 115px;
+  border: 1px solid #b0cbb7;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #438363;
+  margin-bottom: 26px;
+}
+.taxon-welcome h2 {
+  font-size: 33px;
+  margin: 18px 0;
+  line-height: 1.55;
+}
+.taxon-welcome p {
+  color: var(--muted);
+  font-size: 13px;
+}
+.taxonomy-example {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  margin: 15px 0 25px;
+  color: #598568;
+}
+.taxonomy-example span {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+}
+.taxon-welcome button {
+  font-size: 12px;
+}
+.skeleton {
+  height: 500px;
+}
+@media (max-width: 1100px) {
+  .taxon-layout {
+    grid-template-columns: 250px minmax(0, 1fr);
+    gap: 18px;
+  }
+  .taxon-detail {
+    padding: 24px;
+  }
+}
+@media (max-width: 850px) {
   .taxon-layout {
     grid-template-columns: 1fr;
-    height: auto;
+  }
+  .tree-panel {
+    position: static;
+    max-height: 410px;
+  }
+  .taxon-detail {
+    padding: 22px;
     min-height: 0;
   }
-
-  .tree-panel,
-  .detail-panel {
-    height: auto;
-    max-height: none;
-    overflow: visible;
-  }
-
-  .detail-panel {
-    order: 1;
-  }
-
-  .tree-panel {
-    order: 2;
-  }
-
-  .plant-image,
-  .plant-map {
-    width: 100%;
-    max-width: 100%;
-  }
-}
-
-@media (max-width: 640px) {
-  .tree-panel {
-    max-height: 46vh;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  .tree-toolbar {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-  }
-
-  .tree-toolbar select {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .genus-summary {
-    margin-left: 10px;
-    font-size: 14px;
-    padding: 6px 12px;
-  }
-
-  .species-btn {
-    width: calc(100% - 36px);
-    margin-left: 24px;
-    padding: 8px 14px;
-    font-size: 13px;
-  }
-
-  .family-summary {
-    padding: 8px 10px;
-    font-size: 16px;
-  }
-
-  .detail-panel {
-    padding: 14px;
-  }
-
-  .plant-map {
-    height: 260px;
+  .taxon-welcome {
+    min-height: 460px;
   }
 }
 </style>

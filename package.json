@@ -4,13 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "assets:index": "node --experimental-strip-types scripts/update-image-index.ts",
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
     "build:dynamic": "vue-tsc -b && vite build --mode dynamic",
     "build:static": "vue-tsc -b && vite build --mode static",
     "preview": "vite preview",
-    "typecheck": "vue-tsc --noEmit",
-    "lint": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc -b",
+    "lint": "vue-tsc -b"
   },
   "dependencies": {
     "fuse.js": "^7.1.0",
