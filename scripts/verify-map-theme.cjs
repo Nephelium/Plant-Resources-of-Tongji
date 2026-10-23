@@ -54,7 +54,11 @@ async (page) => {
   };
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
-  await page.evaluate(() => localStorage.removeItem("tongjiplants_theme"));
+  await page.evaluate(() => {
+    localStorage.removeItem("tongjiplants_theme");
+    localStorage.setItem("tongjiplants_basemap", "online");
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
   await goto("/");
   await expectTheme("light", "首次打开，系统日间对应浅色地图");
   await page.waitForFunction(() => [...document.querySelectorAll(".leaflet-tile")]
@@ -145,7 +149,7 @@ async (page) => {
     return !pixels.some((value, index) => index % 4 === 3 && value > 0);
   });
   check(!(await hasPoints()), "隐藏点位后 Canvas 清空，可看清道路");
-  check((await page.locator(".map-result-count").innerText()).includes("15,937"),
+  check((await page.locator(".map-result-count").innerText()).includes("16,440"),
     "隐藏点位保留调查统计和筛选数据");
   await page.getByRole("checkbox", { name: "植物点位" }).focus();
   await page.keyboard.press("Space");

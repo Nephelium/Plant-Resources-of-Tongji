@@ -83,9 +83,10 @@ const loadLegacyPoints = async (): Promise<FeatureCollection> => {
   }
   if (legacyPointsRequest) return legacyPointsRequest;
   legacyPointsRequest = (async () => {
-    const text = await readAsset(
-      `${ASSET_BASE}legacy/data/ligneous_plants.geojson.js`,
-    ).then((r) => r.text());
+    const [text, supplement] = await Promise.all([
+      readAsset(`${ASSET_BASE}legacy/data/ligneous_plants.geojson.js`).then((r) => r.text()),
+      readAsset(`${ASSET_BASE}maps/campus-supplement.geojson`).then((r) => r.json() as Promise<FeatureCollection>),
+    ]);
     const jsonText = text
       .replace(/^\uFEFF/, "")
       .replace(/^\s*var\s+\w+\s*=\s*/i, "")
@@ -94,8 +95,10 @@ const loadLegacyPoints = async (): Promise<FeatureCollection> => {
     const parsed = JSON.parse(jsonText) as FeatureCollection;
     if (parsed.type !== "FeatureCollection" || !Array.isArray(parsed.features))
       throw new Error("植物地图数据格式有误");
-    legacyPointsCache = parsed;
-    return parsed;
+    if (supplement.type !== "FeatureCollection" || !Array.isArray(supplement.features))
+      throw new Error("校园补充点位格式有误");
+    legacyPointsCache = { type: "FeatureCollection", features: [...parsed.features, ...supplement.features] };
+    return legacyPointsCache;
   })();
   try {
     return await legacyPointsRequest;

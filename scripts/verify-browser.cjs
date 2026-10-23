@@ -57,18 +57,18 @@ async (page) => {
   await goto("/");
   await page.getByRole("textbox", { name: "搜索地图植物" }).waitFor();
   await page.waitForFunction(() =>
-    document.querySelector(".stats-strip")?.textContent?.includes("15,937"),
+    document.querySelector(".stats-strip")?.textContent?.includes("16,440"),
   );
   check(
-    (await page.locator(".stats-strip").innerText()).includes("141"),
+    (await page.locator(".stats-strip").innerText()).includes("143"),
     "首页统计排除空名称，保留全部点位",
   );
   check(
     (await page.locator(".plant-map canvas").count()) === 1,
-    "15,937 个点位使用 Canvas",
+    "16,440 个点位使用 Canvas",
   );
   await page.waitForFunction(() =>
-    [...document.querySelectorAll(".leaflet-tile")].some(
+    [...document.querySelectorAll(".campus-basemap,.leaflet-tile")].some(
       (img) => img.complete && img.naturalWidth > 0,
     ),
   );

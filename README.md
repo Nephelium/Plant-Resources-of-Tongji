@@ -10,7 +10,7 @@
 
 [当前线上网站](https://nephelium.github.io/Plant-Resources-of-Tongji/#/) · [快速开始](#快速开始) · [页面与功能](#页面与功能) · [数据与资源](#数据与资源) · [开发与验证](#开发与验证)
 
-> 下方为 2026-10-21 本地改版的真实浏览器截图。线上网站的内容取决于最后一次发布。
+> 下方为真实浏览器截图。校园地图与日夜模式截图更新于 2026-10-23。
 
 ![素不莳花首页](output/playwright/screenshots/home-desktop.png)
 
@@ -43,18 +43,34 @@
 
 ### 植物地图：把名字放回校园
 
-地图底色跟随网站外观：日间使用浅色标准底图，夜间使用深色底图，植物按科着色。可输入中文名、学名或科属，也可用科筛选和常见植物快捷按钮缩小范围。侧栏列出对应植物及点位数量，点击箭头打开档案，点击地图上的点查看单株信息。
+默认打开**校园专属图**，从原始植物调绘 PDF 提取道路、建筑、绿地与水面，保留楼号和楼名。点击左上角的**在线地图**可查看校园周边道路，浏览器会记住选择。两种地图使用相同的植物坐标，切换时保留当前视野。
 
-- 手动或系统切换日间／夜间外观时，地图同步切换底色。也可单独切换地图底色，下次网站外观变化时恢复跟随，保留 OpenStreetMap 署名。
+地图底色跟随网站外观，夜间采用石墨灰配色，植物按科着色。可输入中文名、学名或科属，也可用科筛选和今日植物快捷按钮缩小范围。侧栏列出对应植物及点位数量，点击箭头打开档案，点击地图上的点查看单株信息。
+
+- 手动或系统切换日间／夜间外观时，两种地图均同步切换底色。也可单独切换地图底色，下次网站外观变化时恢复跟随。
+- 校园图使用约 0.54 MB 的矢量资源，放大后保持清晰，无须加载整份 32 MB PDF，也不依赖外部图块服务。123 处楼号和楼名按视野排布，避开地图按钮和重叠标签。
+- 衷和楼东北侧补入 PDF 中的 503 个植物点位，两种底图均可查看。补充点位可参与搜索、分类和档案浏览，弹窗注明 PDF 来源及植物编号。
 - Canvas 绘制全部调查点位，避免创建上万个 SVG 节点。
 - 支持缩放、平移、显示全部筛选点位、展开地图及 Esc 收起。
 - 滚轮缩放默认开启，可在地图右下角取消勾选。
-- 柔和底图淡化道路与建筑的色彩，让植物更突出；取消勾选可恢复原始地图细节。夜间底图为中性石墨灰。
+- 在线地图的柔和底图开关淡化道路与建筑的色彩，让植物更突出；取消勾选可恢复原始地图细节。
 - 点位大小随缩放调整，悬停可看名称与科名，点击打开档案。可暂时隐藏植物点位，单独查看道路和建筑。
 - 搜索条件保存在 URL 中，打开植物档案再返回时可继续浏览。
 - 网络异常时保留点位，并提供底图重新加载按钮。
 
-![柔和浅灰校园植物地图](output/playwright/screenshots/map-desktop.png)
+![校园专属地图与楼号楼名](output/playwright/screenshots/campus-map-desktop.png)
+
+| 校园夜间地图 | 手机展开校园图 |
+| --- | --- |
+| <img src="output/playwright/screenshots/campus-map-dark.png" width="760" alt="石墨灰校园矢量地图"> | <img src="output/playwright/screenshots/campus-map-mobile.png" width="320" alt="手机校园图与底图切换"> |
+
+| 衷和楼东北侧 · 校园图 | 同一区域 · 在线地图 |
+| --- | --- |
+| ![校园图补齐的植物点位](output/playwright/screenshots/campus-northeast.png) | ![在线地图中相同的补充植物](output/playwright/screenshots/online-northeast.png) |
+
+底图配准、数据来源与重新生成步骤见 [校园地图维护说明](docs/campus-map.md)。
+
+![柔和浅灰在线地图](output/playwright/screenshots/map-desktop.png)
 
 | 石墨灰夜间地图 | 手机展开地图 |
 | --- | --- |
@@ -139,7 +155,7 @@ npm run dev -- --mode static --host 127.0.0.1 --port 5173
 
 打开 [本地预览](http://127.0.0.1:5173/)。
 
-静态模式直接读取仓库中的植物数据、照片和文章，不需要启动后端。地图图块仍通过网络加载。
+静态模式直接读取仓库中的植物数据、照片、校园底图和文章，不需要启动后端。切换至在线地图时，通过网络加载 OpenStreetMap 图块。
 
 ### 构建静态版
 
@@ -189,19 +205,19 @@ npm run dev -- --mode dynamic --host 127.0.0.1 --port 5173
 
 ## 数据与资源
 
-当前静态数据来自 `public/legacy/data/ligneous_plants.geojson.js`：
+当前静态数据由原始 `public/legacy/data/ligneous_plants.geojson.js` 与 `public/maps/campus-supplement.geojson` 合并，原始文件保留：
 
 | 内容                 | 数量及说明                         |
 | -------------------- | ---------------------------------- |
-| 调查点位             | 15,937 个                          |
-| 非空中文名去重记录   | 141 种植物                         |
-| 有记录的科           | 53 个                              |
+| 地图点位             | 16,440 个：原始 15,937 个、PDF 补充 503 个 |
+| 非空中文名去重记录   | 143 种植物                         |
+| 有记录的科           | 54 个                              |
 | 名称与科属为空的点位 | 1 个，保留在地图，未计入物种与科数 |
 | 精选文章             | 10 篇                              |
 | 植物变迁             | 9 条原始记录                       |
 | 无同名照片的植物     | 12 种，显示照片待补充占位          |
 
-这里的种数按原数据中文名去重计算，沿用调查目录的分类口径。原始 GeoJSON、照片和文章未改写。
+这里的种数按中文名去重计算，沿用调查目录的分类口径。补充数据中的黄栌、红花碧桃按 PDF 图例录入。PDF 点位是对原图的坐标配准结果，不能视为新一次实地调查。原始 GeoJSON、PDF、照片和文章未改写。动态模式继续使用后端数据，未修改后端记录。
 
 历史字段 `category` 对应科，`family` 对应属。前端转换时沿用这一约定，不根据英文属性名猜测语义。
 
@@ -242,6 +258,7 @@ frontend/
 │  └─ views/                    # 地图、图鉴、分类、文章等页面
 ├─ public/
 │  ├─ illustrations/           # 首页插画与文章专属封面
+│  ├─ maps/                     # 日夜校园矢量图与 PDF 补充点位
 │  ├─ legacy/                   # 原始调查数据、照片及头像
 │  └─ articles/                 # 文章目录、Markdown 与配图
 ├─ scripts/                     # 索引生成与浏览器验证
@@ -250,7 +267,7 @@ frontend/
 └─ AGENTS.md                    # 本项目工作约定
 ```
 
-地图使用 [OpenStreetMap](https://www.openstreetmap.org/copyright) 图块并显示贡献者署名。
+校园图显示原项目调绘署名，在线地图使用 [OpenStreetMap](https://www.openstreetmap.org/copyright) 图块并显示贡献者署名。
 
 主要技术：Vue 3、TypeScript、Vite、Vue Router、Leaflet、Marked。界面使用本地可用的中文无衬线字体，拉丁学名单独以衬线斜体呈现，不依赖远程字体服务。页面按路由拆包，地图与文章模块按需加载。
 
@@ -271,7 +288,7 @@ npx --yes --package @playwright/cli playwright-cli -s=tongji-check open http://1
 npx --yes --package @playwright/cli playwright-cli -s=tongji-check run-code --filename=scripts/verify-browser.cjs
 ```
 
-脚本覆盖首页植物卡片、键盘切换、鼠标摆动、动效暂停与减少动画偏好，以及地图筛选与弹窗、底图切换、展开与 Esc、图鉴分页与返回状态、分类切换、文章阅读设置、年份筛选、静态联系入口、未知路由，以及 320 / 390 / 768 / 1024 px 屏宽布局，并生成 README 截图。地图浏览需要能访问 OpenStreetMap。
+脚本覆盖首页植物卡片、键盘切换、鼠标摆动、动效暂停与减少动画偏好，以及地图筛选与弹窗、底图切换、展开与 Esc、图鉴分页与返回状态、分类切换、文章阅读设置、年份筛选、静态联系入口、未知路由，以及 320 / 390 / 768 / 1024 px 屏宽布局，并生成 README 截图。`scripts/verify-campus-map.cjs` 检查校园底图、楼名避让、补充点位、主题联动与加载失败恢复，`scripts/verify-map-theme.cjs` 检查在线地图。在线地图测试需要能访问 OpenStreetMap。
 
 本轮实测范围和结果见 [验证记录](docs/verification.md)。
 

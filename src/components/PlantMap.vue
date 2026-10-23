@@ -7,6 +7,8 @@ import { plantColor, plantLink } from "../utils/plants";
 import { createMapRenderer } from "../utils/mapRenderer";
 import AppIcon from "./AppIcon.vue";
 import { useTheme } from "../composables/useTheme";
+import { createCampusBasemap } from "../utils/campusMap";
+import { readPreference, writePreference } from "../utils/storage";
 const props = withDefaults(
   defineProps<{
     features: PlantFeature[];
@@ -25,6 +27,10 @@ const dark = ref(resolved.value === "dark");
 const scrollZoom = ref(true);
 const showPlants = ref(true);
 const quietBase = ref(true);
+const basemap = ref<"campus" | "online">(
+  readPreference("tongjiplants_basemap", "campus") === "online" ? "online" : "campus",
+);
+const campusError = ref(false);
 watch(resolved, (theme) => {
   dark.value = theme === "dark";
 });
@@ -32,6 +38,7 @@ const tileError = ref(false);
 let map: L.Map | undefined;
 let layer: L.FeatureGroup | undefined;
 let tiles: L.TileLayer | undefined;
+let campusMap: ReturnType<typeof createCampusBasemap> | undefined;
 let hoverTooltip: L.Tooltip | undefined;
 let hoveredMarker: L.CircleMarker | undefined;
 const markerFeatures = new WeakMap<L.CircleMarker, PlantFeature>();
@@ -72,6 +79,12 @@ function popup(feature: PlantFeature) {
     void router.push(plantLink(info.chinese_name));
   });
   box.append(title, latin, family);
+  if (info.source === "campus-pdf") {
+    const source = document.createElement("small");
+    source.className = "plant-point-source";
+    source.textContent = `PDF 校园调绘图 · ${info.code_id}`;
+    box.append(source);
+  }
   if (info.chinese_name) box.append(link);
   return box;
 }
@@ -193,6 +206,17 @@ function retryTiles() {
   tileError.value = false;
   tiles?.redraw();
 }
+function switchBasemap() {
+  if (!map || !tiles || !campusMap) return;
+  if (basemap.value === "campus") {
+    tiles.remove();
+    campusMap.setTheme(dark.value);
+    campusMap.layer.addTo(map);
+  } else {
+    campusMap.layer.remove();
+    tiles.addTo(map);
+  }
+}
 onMounted(() => {
   if (!mapEl.value) return;
   map = L.map(mapEl.value, {
@@ -219,10 +243,14 @@ onMounted(() => {
     maxZoom: 21,
     attribution:
       '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
-  }).addTo(map);
+  });
   tiles.on("tileerror", () => {
     tileError.value = true;
   });
+  campusMap = createCampusBasemap(map, dark.value, (failed) => {
+    campusError.value = failed;
+  });
+  switchBasemap();
   map.on("zoomend", refreshMarkerStyle);
   map.on("movestart", clearHover);
   map.on("popupopen", clearHover);
@@ -242,7 +270,14 @@ watch(scrollZoom, (value) => {
   if (value) map?.scrollWheelZoom.enable();
   else map?.scrollWheelZoom.disable();
 });
-watch(dark, refreshMarkerStyle);
+watch(dark, (night) => {
+  refreshMarkerStyle();
+  campusMap?.setTheme(night);
+});
+watch(basemap, (value) => {
+  writePreference("tongjiplants_basemap", value);
+  switchBasemap();
+});
 watch(showPlants, (value) => {
   clearHover();
   if (!map || !layer) return;
@@ -257,6 +292,7 @@ onBeforeUnmount(() => {
   if (expanded.value) document.body.style.overflow = previousOverflow;
   // 先移除路径，再销毁 Canvas，防止路径移除时重新排入重绘任务。
   map?.stop();
+  campusMap?.dispose();
   layer?.clearLayers();
   layer?.remove();
   layer = undefined;
@@ -272,13 +308,21 @@ onBeforeUnmount(() => {
       'map-expanded': expanded,
       'map-compact': compact,
       'map-dark': dark,
-      'map-quiet': quietBase,
+      'map-quiet': quietBase && basemap === 'online',
+      'map-campus': basemap === 'campus',
     }"
     :role="expanded ? 'dialog' : undefined"
     :aria-modal="expanded ? true : undefined"
     :aria-label="expanded ? label : undefined"
   >
     <div class="map-controls">
+      <div class="map-control-stack">
+        <div class="map-base-switch" role="group" aria-label="地图类型">
+          <button :aria-pressed="basemap === 'campus'" :class="{ selected: basemap === 'campus' }"
+            @click="basemap = 'campus'"><AppIcon name="leaf" :size="15" />校园图</button>
+          <button :aria-pressed="basemap === 'online'" :class="{ selected: basemap === 'online' }"
+            @click="basemap = 'online'"><AppIcon name="map" :size="15" />在线地图</button>
+        </div>
       <div class="map-theme-switch" role="group" aria-label="地图底色">
         <button
           :class="{ selected: dark }"
@@ -294,6 +338,7 @@ onBeforeUnmount(() => {
         >
           <AppIcon name="sun" :size="15" /><span>标准</span>
         </button>
+      </div>
       </div>
       <div class="map-actions">
         <button
@@ -315,7 +360,11 @@ onBeforeUnmount(() => {
       </div>
     </div>
     <div ref="mapEl" class="plant-map" :aria-label="label"></div>
-    <div v-if="tileError" class="tile-notice" role="status">
+    <div v-if="basemap === 'campus' && campusError" class="tile-notice" role="status">
+      校园图暂未加载。<button @click="campusMap?.retry(dark)">重新加载</button>
+      <button @click="basemap = 'online'">切换在线地图</button>
+    </div>
+    <div v-if="basemap === 'online' && tileError" class="tile-notice" role="status">
       底图暂未加载，植物点位仍可查看。<button @click="retryTiles">
         重新加载
       </button>
@@ -324,7 +373,7 @@ onBeforeUnmount(() => {
       <span><i></i> 同济大学 · 四平路校区</span
       >
       <div class="map-options" role="group" aria-label="地图显示">
-        <label><input v-model="quietBase" type="checkbox" />柔和底图</label>
+        <label v-if="basemap === 'online'"><input v-model="quietBase" type="checkbox" />柔和底图</label>
         <label><input v-model="showPlants" type="checkbox" />植物点位</label>
         <label><input v-model="scrollZoom" type="checkbox" />滚轮缩放</label>
       </div>
@@ -357,6 +406,64 @@ onBeforeUnmount(() => {
 .map-dark.map-quiet :deep(.leaflet-tile-pane) {
   filter: grayscale(1) invert(1) contrast(0.72) brightness(0.85);
   opacity: 0.72;
+}
+.map-campus :deep(.leaflet-tile-pane) {
+  filter: none;
+  opacity: 1;
+}
+.map-campus .plant-map {
+  background: #f5f7f4;
+}
+.map-campus.map-dark .plant-map {
+  background: #202328;
+}
+.map-control-stack {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.map-base-switch {
+  display: flex;
+  align-items: center;
+  pointer-events: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  padding: 4px;
+  box-shadow: 0 3px 0 var(--card-shadow), 0 5px 18px #0001;
+}
+.map-base-switch button {
+  min-height: 34px;
+  border-radius: 10px;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+.map-base-switch button.selected {
+  background: var(--leaf-tint);
+  color: var(--ink);
+  font-weight: 700;
+}
+:deep(.campus-landmark) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 600 11px/1.2 var(--sans);
+  color: #394e43;
+  text-shadow: 0 1px 3px #fff, 0 -1px 3px #fff, 1px 0 3px #fff, -1px 0 3px #fff;
+}
+:deep(.campus-landmark span) {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+:deep(.campus-landmark small) {
+  font-size: 9px;
+  font-weight: 500;
+  margin-right: 4px;
+}
+.map-dark :deep(.campus-landmark) {
+  color: #d3ddd6;
+  text-shadow: 0 1px 3px #202328, 0 -1px 3px #202328, 1px 0 3px #202328, -1px 0 3px #202328;
 }
 .map-controls {
   position: absolute;
@@ -585,6 +692,12 @@ onBeforeUnmount(() => {
   display: inline-block;
   padding: 8px 0;
 }
+:deep(.plant-point-source) {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  margin-bottom: 4px;
+}
 :deep(.leaflet-control-attribution) {
   font-size: 9px;
 }
@@ -599,6 +712,11 @@ onBeforeUnmount(() => {
     top: 12px;
     left: 12px;
     right: 12px;
+  }
+  .map-control-stack {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
   .map-compact {
     border-radius: 8px;
@@ -615,6 +733,11 @@ onBeforeUnmount(() => {
     gap: 12px;
     width: 100%;
     justify-content: space-between;
+  }
+}
+@media (max-width: 420px) {
+  .map-actions {
+    flex-direction: column;
   }
 }
 

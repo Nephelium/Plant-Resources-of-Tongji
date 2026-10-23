@@ -9,6 +9,9 @@ export type PlantFeature = {
     fruit_period: string;
     flower_period: string;
     color: string;
+    source?: "campus-pdf";
+    source_region?: string;
+    pdf_position?: [number, number];
   };
   geometry: {
     type: "Point";
