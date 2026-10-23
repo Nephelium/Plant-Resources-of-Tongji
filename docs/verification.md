@@ -114,6 +114,21 @@ npx --yes --package @playwright/cli playwright-cli -s=tongji-theme open http://1
 npx --yes --package @playwright/cli playwright-cli -s=tongji-theme run-code --filename=scripts/verify-theme.cjs
 ```
 
+## 2026-10-23 地图外观联动与滚轮缩放
+
+- 静态、动态及 GitHub Pages 子目录构建通过。
+- `scripts/verify-map-theme.cjs` 在静态子目录生产预览中完成 27 项检查。覆盖系统日夜切换、手动切换、刷新保存、地图单独选择后恢复跟随，以及首页、分类页、植物档案和手机尺寸的地图初始化。
+- 使用真实鼠标滚轮事件确认默认缩放生效，页面保持原位。取消勾选后，滚轮恢复滚动页面，地图比例不变；重新开启后可继续缩放。
+- 外观切换保留当前比例与已加载图块，真实 OpenStreetMap 图块加载成功，未捕获页面异常为 0。
+- 主题控制改为由 App 提供共享状态，系统与存储监听只注册一次。原外观专项 56 项回归通过，包括禁止浏览器存储时的手动切换、键盘操作和贴顶布局。测试中的 Tab 离开检查等待关闭动画结束后再断言。
+- README、设计说明和项目约定已同步更新默认行为。
+
+打开生产预览地址后运行：
+
+```powershell
+npx --yes --package @playwright/cli playwright-cli -s=tongji-map-theme run-code --filename=scripts/verify-map-theme.cjs
+```
+
 ## 验证范围
 
 上述记录覆盖本地前端及生产构建预览。真实后端的管理员登录、审核与持久化未在本轮接入测试。手机尺寸通过浏览器模拟，未在实体手机、Safari 或 Firefox 上验证。公开版本通过仓库现有 GitHub Pages 工作流发布，上线状态以对应提交的 Actions 结果与线上页面复核为准。

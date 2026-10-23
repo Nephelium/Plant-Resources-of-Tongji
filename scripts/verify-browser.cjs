@@ -72,7 +72,13 @@ async (page) => {
       (img) => img.complete && img.naturalWidth > 0,
     ),
   );
-  check((await page.locator(".map-dark").count()) === 1, "默认深色底图");
+  check(
+    await page.evaluate(
+      () => document.querySelector(".plant-map-shell").classList.contains("map-dark") ===
+        (document.documentElement.dataset.theme === "dark"),
+    ),
+    "地图默认底色跟随网站外观",
+  );
   await page.locator(".botanical-art").evaluate((img) => img.decode());
   const specimenTabs = page.getByRole("tab");
   await specimenTabs.nth(2).click();

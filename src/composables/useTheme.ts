@@ -1,4 +1,15 @@
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import {
+  computed,
+  inject,
+  onBeforeUnmount,
+  provide,
+  readonly,
+  ref,
+  watch,
+  type ComputedRef,
+  type InjectionKey,
+  type Ref,
+} from "vue";
 import { readPreference, writePreference } from "../utils/storage";
 
 export type ThemePreference = "system" | "light" | "dark";
@@ -6,7 +17,14 @@ const key = "tongjiplants_theme";
 const valid = (value: string): ThemePreference =>
   value === "light" || value === "dark" ? value : "system";
 
-export function useTheme() {
+const themeKey: InjectionKey<{
+  preference: Readonly<Ref<ThemePreference>>;
+  resolved: ComputedRef<"light" | "dark">;
+  setPreference: (value: ThemePreference) => void;
+}> = Symbol("theme");
+
+// App owns the listeners; every consumer shares the same reactive preference.
+export function provideTheme() {
   const preference = ref<ThemePreference>(valid(readPreference(key, "system")));
   const media = window.matchMedia("(prefers-color-scheme: dark)");
   const systemDark = ref(media.matches);
@@ -49,5 +67,13 @@ export function useTheme() {
     preference.value = value;
     writePreference(key, value);
   }
-  return { preference, resolved, setPreference };
+  const theme = { preference: readonly(preference), resolved, setPreference };
+  provide(themeKey, theme);
+  return theme;
+}
+
+export function useTheme() {
+  const theme = inject(themeKey);
+  if (!theme) throw new Error("useTheme requires the App theme provider");
+  return theme;
 }

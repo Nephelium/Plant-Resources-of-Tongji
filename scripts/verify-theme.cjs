@@ -232,6 +232,7 @@ async (page) => {
   await p.keyboard.press("Tab");
   await p.keyboard.press("Tab");
   await p.keyboard.press("Tab");
+  await p.locator(".theme-options").waitFor({ state: "hidden" });
   check(
     !(await p.locator(".theme-options").count()),
     "Tab 离开外观面板自动收起",

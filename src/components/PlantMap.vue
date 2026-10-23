@@ -6,6 +6,7 @@ import type { PlantFeature } from "../types";
 import { plantColor, plantLink } from "../utils/plants";
 import { createMapRenderer } from "../utils/mapRenderer";
 import AppIcon from "./AppIcon.vue";
+import { useTheme } from "../composables/useTheme";
 const props = withDefaults(
   defineProps<{
     features: PlantFeature[];
@@ -19,8 +20,12 @@ const mapEl = ref<HTMLElement>();
 const container = ref<HTMLElement>();
 const expandButton = ref<HTMLButtonElement>();
 const expanded = ref(false);
-const dark = ref(true);
-const scrollZoom = ref(false);
+const { resolved } = useTheme();
+const dark = ref(resolved.value === "dark");
+const scrollZoom = ref(true);
+watch(resolved, (theme) => {
+  dark.value = theme === "dark";
+});
 const tileError = ref(false);
 let map: L.Map | undefined;
 let layer: L.FeatureGroup | undefined;
@@ -133,7 +138,7 @@ onMounted(() => {
   map = L.map(mapEl.value, {
     preferCanvas: true,
     renderer: createMapRenderer(),
-    scrollWheelZoom: false,
+    scrollWheelZoom: scrollZoom.value,
     zoomControl: false,
     zoomSnap: 0.25,
     zoomDelta: 0.5,
