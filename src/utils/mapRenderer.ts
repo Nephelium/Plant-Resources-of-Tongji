@@ -18,4 +18,5 @@ const FrameSafeCanvas = L.Canvas.extend({
   },
 }) as typeof L.Canvas;
 
-export const createMapRenderer = () => new FrameSafeCanvas({ padding: 0.3 });
+export const createMapRenderer = () =>
+  new FrameSafeCanvas({ padding: 0.3, tolerance: 3 });

@@ -23,6 +23,8 @@ const expanded = ref(false);
 const { resolved } = useTheme();
 const dark = ref(resolved.value === "dark");
 const scrollZoom = ref(true);
+const showPlants = ref(true);
+const quietBase = ref(true);
 watch(resolved, (theme) => {
   dark.value = theme === "dark";
 });
@@ -30,6 +32,9 @@ const tileError = ref(false);
 let map: L.Map | undefined;
 let layer: L.FeatureGroup | undefined;
 let tiles: L.TileLayer | undefined;
+let hoverTooltip: L.Tooltip | undefined;
+let hoveredMarker: L.CircleMarker | undefined;
+const markerFeatures = new WeakMap<L.CircleMarker, PlantFeature>();
 let observer: ResizeObserver | undefined;
 let renderTimer: ReturnType<typeof setTimeout> | undefined;
 let previousOverflow = "";
@@ -70,26 +75,81 @@ function popup(feature: PlantFeature) {
   if (info.chinese_name) box.append(link);
   return box;
 }
+function markerStyle() {
+  const zoom = map?.getZoom() ?? 16;
+  const sparse = props.features.length < 600;
+  return {
+    radius: Math.max(
+      sparse ? 3.5 : 1.4,
+      Math.min(6, 1.6 + (zoom - 16) * 0.8 + (sparse ? 1 : 0)),
+    ),
+    color: dark.value ? "#202329" : "#ffffff",
+    weight: zoom >= 18 || sparse ? 0.9 : 0,
+    fillOpacity: zoom >= 18 || sparse ? 0.95 : 0.8,
+  };
+}
+function clearHover() {
+  hoverTooltip?.remove();
+  if (hoveredMarker) {
+    const style = markerStyle();
+    hoveredMarker.setStyle(style).setRadius(style.radius);
+    hoveredMarker = undefined;
+  }
+}
+function refreshMarkerStyle() {
+  clearHover();
+  const style = markerStyle();
+  layer?.eachLayer((item) => {
+    const marker = item as L.CircleMarker;
+    marker.setStyle(style).setRadius(style.radius);
+  });
+}
+function hoverPlant(event: L.LeafletEvent) {
+  clearHover();
+  const marker = event.layer as L.CircleMarker;
+  const feature = markerFeatures.get(marker);
+  if (!feature || !map) return;
+  hoveredMarker = marker;
+  marker.setRadius(markerStyle().radius + 2).setStyle({
+    weight: 2,
+    color: dark.value ? "#eef5ee" : "#ffffff",
+    fillOpacity: 1,
+  });
+  const label = document.createElement("div");
+  const name = document.createElement("strong");
+  name.textContent = feature.properties.chinese_name || "待补充名称";
+  const family = document.createElement("span");
+  family.textContent = feature.properties.category;
+  label.append(name, family);
+  hoverTooltip ??= L.tooltip({
+    direction: "top",
+    offset: [0, -10],
+    className: "plant-hover-label",
+    opacity: 1,
+  });
+  hoverTooltip.setContent(label).setLatLng(marker.getLatLng()).addTo(map);
+}
 function renderPoints() {
   if (!map) return;
+  clearHover();
   layer?.remove();
   layer = L.featureGroup();
-  const radius =
-    props.features.length > 3000 ? 2.5 : props.features.length > 600 ? 3 : 4.5;
+  const style = markerStyle();
   for (const feature of props.features) {
     const [lng, lat] = feature.geometry.coordinates;
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
     const marker = L.circleMarker([lat, lng], {
-      radius,
-      color: plantColor(feature.properties.category),
-      weight: 0.5,
-      fillOpacity: 0.85,
+      ...style,
+      fillColor: plantColor(feature.properties.category),
     });
+    markerFeatures.set(marker, feature);
     marker.bindPopup(() => popup(feature));
     layer.addLayer(marker);
   }
-  layer.addTo(map);
+  layer.on("mouseover", hoverPlant).on("mouseout", clearHover);
+  if (showPlants.value) layer.addTo(map);
   resetView();
+  refreshMarkerStyle();
 }
 async function toggleExpanded() {
   expanded.value = !expanded.value;
@@ -163,6 +223,9 @@ onMounted(() => {
   tiles.on("tileerror", () => {
     tileError.value = true;
   });
+  map.on("zoomend", refreshMarkerStyle);
+  map.on("movestart", clearHover);
+  map.on("popupopen", clearHover);
   renderPoints();
   observer = new ResizeObserver(() => map?.invalidateSize());
   observer.observe(mapEl.value);
@@ -179,7 +242,15 @@ watch(scrollZoom, (value) => {
   if (value) map?.scrollWheelZoom.enable();
   else map?.scrollWheelZoom.disable();
 });
+watch(dark, refreshMarkerStyle);
+watch(showPlants, (value) => {
+  clearHover();
+  if (!map || !layer) return;
+  if (value) layer.addTo(map);
+  else layer.remove();
+});
 onBeforeUnmount(() => {
+  clearHover();
   clearTimeout(renderTimer);
   observer?.disconnect();
   document.removeEventListener("keydown", onKey);
@@ -201,6 +272,7 @@ onBeforeUnmount(() => {
       'map-expanded': expanded,
       'map-compact': compact,
       'map-dark': dark,
+      'map-quiet': quietBase,
     }"
     :role="expanded ? 'dialog' : undefined"
     :aria-modal="expanded ? true : undefined"
@@ -250,7 +322,12 @@ onBeforeUnmount(() => {
     </div>
     <div class="map-caption">
       <span><i></i> 同济大学 · 四平路校区</span
-      ><label><input v-model="scrollZoom" type="checkbox" />滚轮缩放</label>
+      >
+      <div class="map-options" role="group" aria-label="地图显示">
+        <label><input v-model="quietBase" type="checkbox" />柔和底图</label>
+        <label><input v-model="showPlants" type="checkbox" />植物点位</label>
+        <label><input v-model="scrollZoom" type="checkbox" />滚轮缩放</label>
+      </div>
     </div>
   </div>
 </template>
@@ -259,20 +336,27 @@ onBeforeUnmount(() => {
   position: relative;
   overflow: hidden;
   border-radius: 0 10px 10px 0;
-  background: #1b2828;
+  background: #f0f2f1;
   min-width: 0;
 }
 .plant-map {
   height: 550px;
-  background: #e9eddf;
+  background: #edf0ef;
   z-index: 0;
 }
 .map-dark .plant-map {
-  background: #182626;
+  background: #24272b;
+}
+.map-quiet :deep(.leaflet-tile-pane) {
+  filter: grayscale(1) contrast(0.72) brightness(1.2);
+  opacity: 0.85;
 }
 .map-dark :deep(.leaflet-tile-pane) {
-  filter: invert(1) hue-rotate(170deg) saturate(0.38) brightness(0.82)
-    contrast(0.92);
+  filter: grayscale(1) invert(1) contrast(0.85) brightness(0.9);
+}
+.map-dark.map-quiet :deep(.leaflet-tile-pane) {
+  filter: grayscale(1) invert(1) contrast(0.72) brightness(0.85);
+  opacity: 0.72;
 }
 .map-controls {
   position: absolute;
@@ -289,21 +373,23 @@ onBeforeUnmount(() => {
   pointer-events: auto;
   background: var(--surface);
   border: 0;
-  border-radius: 5px;
-  min-height: 36px;
+  border-radius: 12px;
+  min-height: 40px;
   padding: 8px 11px;
   font-size: 11px;
 }
 .map-theme-switch {
   display: flex;
   background: var(--surface);
-  border-radius: 6px;
-  padding: 3px;
-  box-shadow: 0 2px 12px #0002;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  padding: 4px;
+  box-shadow: 0 3px 0 var(--card-shadow), 0 5px 18px #0001;
 }
 .map-theme-switch button {
-  min-height: 30px;
-  padding: 5px 10px;
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: 10px;
 }
 .map-theme-switch button.selected {
   background: var(--primary);
@@ -311,22 +397,35 @@ onBeforeUnmount(() => {
 }
 .map-actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 .map-actions button {
-  width: 40px;
-  height: 40px;
-  box-shadow: 0 2px 12px #0002;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  box-shadow: 0 3px 0 var(--card-shadow), 0 5px 18px #0001;
+}
+.map-controls button:active {
+  translate: 0 2px;
 }
 .map-caption {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 11px 16px;
+  padding: 10px 16px;
+  min-height: 44px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--line);
   background: var(--surface);
   color: var(--muted);
   gap: 10px;
-  font-size: 10px;
+  font-size: 11px;
+}
+.map-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
 }
 .map-caption span {
   display: flex;
@@ -338,28 +437,36 @@ onBeforeUnmount(() => {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #7e986a;
+  background: var(--primary);
 }
 .map-caption label {
   display: flex;
   align-items: center;
   gap: 5px;
+  min-height: 24px;
   cursor: pointer;
 }
 .map-caption input {
   min-height: 0;
+  width: 14px;
+  height: 14px;
+  margin: 0;
   accent-color: var(--primary);
 }
 .map-expanded {
   position: fixed;
   inset: 12px;
+  display: flex;
+  flex-direction: column;
   z-index: 2000;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  box-shadow: 0 0 0 40px #14221ddd;
+  border-radius: 20px;
+  box-shadow: 0 0 0 40px #15171ce6;
 }
 .map-expanded .plant-map {
-  height: calc(100dvh - 65px);
+  flex: 1;
+  height: auto;
+  min-height: 0;
 }
 .map-compact {
   border-radius: 10px;
@@ -368,7 +475,10 @@ onBeforeUnmount(() => {
   height: 320px;
 }
 .map-compact.map-expanded .plant-map {
-  height: calc(100dvh - 65px);
+  height: auto;
+}
+.map-expanded .map-caption {
+  flex: 0 0 auto;
 }
 .tile-notice {
   position: absolute;
@@ -390,20 +500,61 @@ onBeforeUnmount(() => {
 }
 :deep(.leaflet-control-zoom) {
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 13px;
   overflow: hidden;
-  box-shadow: 0 2px 8px #0001;
+  box-shadow: 0 3px 0 var(--card-shadow), 0 5px 18px #0001;
 }
 :deep(.leaflet-control-zoom a) {
   background: var(--surface);
   color: var(--ink);
-  width: 36px;
-  height: 36px;
-  line-height: 36px;
+  width: 42px;
+  height: 42px;
+  line-height: 42px;
+  font-weight: 400;
+}
+:deep(.leaflet-control-zoom a:first-child) {
+  border-bottom-color: var(--line);
+}
+:deep(.leaflet-control-scale-line) {
+  background: var(--surface);
+  color: var(--muted);
+  border-color: var(--muted);
+  border-radius: 0 0 4px 4px;
+  text-shadow: none;
+  font: 10px var(--sans);
+}
+:deep(.leaflet-bottom .leaflet-control) {
+  margin-bottom: 12px;
+}
+:deep(.leaflet-right .leaflet-control) {
+  margin-right: 16px;
+}
+:deep(.leaflet-left .leaflet-control) {
+  margin-left: 16px;
+}
+:deep(.plant-hover-label) {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 13px;
+  box-shadow: 0 4px 18px var(--overlay-shadow);
+  font-family: var(--sans);
+}
+:deep(.plant-hover-label::before) {
+  border-top-color: var(--surface);
+}
+:deep(.plant-hover-label strong) {
+  font-size: 13px;
+  margin-right: 10px;
+}
+:deep(.plant-hover-label span) {
+  font-size: 10px;
+  color: var(--muted);
 }
 :deep(.leaflet-popup-content-wrapper) {
   background: var(--surface);
-  border-radius: 10px;
+  border-radius: 18px;
   box-shadow: 0 5px 25px #0003;
 }
 :deep(.plant-popup) {
@@ -453,7 +604,17 @@ onBeforeUnmount(() => {
     border-radius: 8px;
   }
   .map-expanded {
-    border-radius: 10px;
+    border-radius: 16px;
+    inset: 8px;
+  }
+  .map-caption {
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .map-options {
+    gap: 12px;
+    width: 100%;
+    justify-content: space-between;
   }
 }
 
@@ -466,6 +627,9 @@ onBeforeUnmount(() => {
 :deep(.leaflet-control-attribution) {
   background: var(--surface);
   color: var(--muted);
+  margin: 0 !important;
+  border-radius: 8px 0 0 0;
+  padding: 1px 6px;
 }
 :deep(.leaflet-control-attribution a) {
   color: var(--primary);

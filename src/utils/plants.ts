@@ -14,12 +14,12 @@ export const periodLabel = (value?: string) =>
   !value || value.trim() === "-" ? "暂无记录" : value;
 export const plantColor = (family: string) => {
   const palette = [
-    "#75c99b",
-    "#6db39b",
-    "#51b6ae",
-    "#db91b7",
-    "#a4d0c4",
-    "#8fb584",
+    "#32a571",
+    "#2b8f7c",
+    "#439fa5",
+    "#d97987",
+    "#80ae98",
+    "#6b9c62",
   ];
   const hash = [...family].reduce((sum, char) => sum + char.charCodeAt(0), 0);
   return palette[hash % palette.length]!;

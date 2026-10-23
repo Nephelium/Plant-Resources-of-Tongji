@@ -91,7 +91,7 @@ npx --yes --package @playwright/cli playwright-cli -s=tongji-boundaries run-code
 
 ## 截图
 
-[`output/playwright/screenshots`](../output/playwright/screenshots/) 包含主要页面、照片图库、大图查看器、随机相识卡片和夜间外观共 16 张桌面截图，6 张手机尺寸截图，以及 1 张完整文章目录长图。README 内嵌图片与长图链接均已检查存在。
+[`output/playwright/screenshots`](../output/playwright/screenshots/) 包含主要页面、照片图库、大图查看器、随机相识卡片和夜间外观共 17 张桌面截图，7 张手机尺寸截图，以及 1 张完整文章目录长图。README 内嵌图片与长图链接均已检查存在。
 
 ## 贴顶导航与夜间模式复核
 
@@ -128,6 +128,12 @@ npx --yes --package @playwright/cli playwright-cli -s=tongji-theme run-code --fi
 ```powershell
 npx --yes --package @playwright/cli playwright-cli -s=tongji-map-theme run-code --filename=scripts/verify-map-theme.cjs
 ```
+
+## 在线地图视觉调整
+
+地图专项扩展为 43 项，在静态子目录生产预览通过，未捕获页面异常为 0。新增检查覆盖柔和滤镜、关闭滤镜后恢复原图、植物层隐藏与恢复、Canvas 实际像素清空与重绘、统计保留、键盘开关、单株悬停名称、点击进入档案及路由切换清理。320、390、768 px 下，展开地图的开关均在窗口内，Esc 可恢复普通地图。
+
+实际查看日间、夜间、悬停提示和手机展开截图。截图等待图块加载与渐显结束，避免将尚未完成绘制的空白底图作为交付图。README 更新浅灰地图，并补充夜间与手机地图截图。静态、动态及子目录构建均通过。PDF 专属底图按用户安排留待后续。
 
 ## 验证范围
 

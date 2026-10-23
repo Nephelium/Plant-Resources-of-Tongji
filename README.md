@@ -49,10 +49,16 @@
 - Canvas 绘制全部调查点位，避免创建上万个 SVG 节点。
 - 支持缩放、平移、显示全部筛选点位、展开地图及 Esc 收起。
 - 滚轮缩放默认开启，可在地图右下角取消勾选。
+- 柔和底图淡化道路与建筑的色彩，让植物更突出；取消勾选可恢复原始地图细节。夜间底图为中性石墨灰。
+- 点位大小随缩放调整，悬停可看名称与科名，点击打开档案。可暂时隐藏植物点位，单独查看道路和建筑。
 - 搜索条件保存在 URL 中，打开植物档案再返回时可继续浏览。
 - 网络异常时保留点位，并提供底图重新加载按钮。
 
-![深色校园植物地图](output/playwright/screenshots/map-desktop.png)
+![柔和浅灰校园植物地图](output/playwright/screenshots/map-desktop.png)
+
+| 石墨灰夜间地图 | 手机展开地图 |
+| --- | --- |
+| <img src="output/playwright/screenshots/map-dark.png" width="760" alt="夜间地图与彩色植物点位"> | <img src="output/playwright/screenshots/map-mobile.png" width="320" alt="手机展开地图与底部图层开关"> |
 
 ### 植物图鉴：搜索，也可以随意翻翻
 
